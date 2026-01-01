@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import AppLayout from "@/components/layout/AppLayout";
@@ -8,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLinkedInAccount } from "@/hooks/useLinkedInAccount";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Linkedin,
@@ -15,24 +18,100 @@ import {
   AlertTriangle,
   RefreshCw,
   Shield,
-  Users,
   Link as LinkIcon,
   Unlink,
   ExternalLink,
-  Clock,
   Info,
   Zap,
+  Loader2,
 } from "lucide-react";
 
 const LinkedInConnect = () => {
-  const { account, isLoading, connectionStatus, disconnectAccount } = useLinkedInAccount();
+  const { user } = useAuth();
+  const { account, isLoading, connectionStatus, disconnectAccount, refetch } = useLinkedInAccount();
+  const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
+    const error = searchParams.get("error");
+
+    if (error) {
+      toast.error("LinkedIn connection failed", {
+        description: searchParams.get("error_description") || "Please try again.",
+      });
+      setSearchParams({});
+      return;
+    }
+
+    if (code && user) {
+      handleOAuthCallback(code);
+    }
+  }, [searchParams, user]);
+
+  const handleOAuthCallback = async (code: string) => {
+    setIsConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/app/linkedin`;
+      
+      const { data, error } = await supabase.functions.invoke("linkedin-oauth-callback", {
+        body: {
+          code,
+          redirectUri,
+          userId: user?.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success("LinkedIn connected successfully!", {
+          description: `Connected as ${data.account.profile_name}`,
+        });
+        refetch();
+      } else {
+        throw new Error(data.error || "Connection failed");
+      }
+    } catch (err: any) {
+      console.error("OAuth callback error:", err);
+      toast.error("Failed to complete LinkedIn connection", {
+        description: err.message,
+      });
+    } finally {
+      setIsConnecting(false);
+      setSearchParams({});
+    }
+  };
 
   const handleConnect = async () => {
-    // In production, this would redirect to LinkedIn OAuth
-    toast.info("LinkedIn OAuth integration coming soon!", {
-      description: "This feature requires LinkedIn OAuth which is being developed.",
-    });
+    setIsConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/app/linkedin`;
+      
+      const { data, error } = await supabase.functions.invoke("linkedin-oauth-init", {
+        body: { redirectUri },
+      });
+
+      if (error) throw error;
+
+      if (data.authUrl) {
+        // Store state for CSRF protection
+        sessionStorage.setItem("linkedin_oauth_state", data.state);
+        // Redirect to LinkedIn
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error(data.error || "Failed to generate OAuth URL");
+      }
+    } catch (err: any) {
+      console.error("OAuth init error:", err);
+      toast.error("Failed to start LinkedIn connection", {
+        description: err.message,
+      });
+      setIsConnecting(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -199,17 +278,26 @@ const LinkedInConnect = () => {
 
               {connectionStatus === "not_connected" && (
                 <div className="space-y-4">
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>OAuth Integration Coming Soon</AlertTitle>
-                    <AlertDescription>
-                      LinkedIn OAuth integration is currently being developed. Once available, you'll be able to connect your LinkedIn account.
-                    </AlertDescription>
-                  </Alert>
-                  <Button onClick={handleConnect} className="w-full bg-[#0A66C2] hover:bg-[#004182]">
-                    <Linkedin className="w-4 h-4 mr-2" />
-                    Connect LinkedIn Account
-                  </Button>
+                  {isConnecting ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                      <p className="text-sm text-muted-foreground">Connecting to LinkedIn...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Connect Your LinkedIn</AlertTitle>
+                        <AlertDescription>
+                          Connect your LinkedIn account to enable automatic posting by your AI agents.
+                        </AlertDescription>
+                      </Alert>
+                      <Button onClick={handleConnect} className="w-full bg-[#0A66C2] hover:bg-[#004182]">
+                        <Linkedin className="w-4 h-4 mr-2" />
+                        Connect LinkedIn Account
+                      </Button>
+                    </>
+                  )}
                 </div>
               )}
             </CardContent>

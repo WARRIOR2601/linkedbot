@@ -101,14 +101,20 @@ const ContentCalendar = () => {
   const handleImageUpload = async (file: File, targetDate: Date) => {
     setIsUploading(true);
     try {
-      // Upload to storage
-      const fileName = `calendar-images/${Date.now()}-${file.name}`;
+      // Get current user for storage path
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please log in to upload images");
+        return;
+      }
+
+      // Upload to storage with user-scoped path
+      const fileName = `${user.id}/${Date.now()}-${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("post-images")
         .upload(fileName, file);
 
       if (uploadError) {
-        // If bucket doesn't exist, create a draft post without image URL
         console.error("Upload error:", uploadError);
         toast.error("Image upload failed. Please try again.");
         return;
