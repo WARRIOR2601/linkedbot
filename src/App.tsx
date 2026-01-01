@@ -21,6 +21,9 @@ import NotFound from "./pages/NotFound";
 
 // App Pages
 import Dashboard from "./pages/app/Dashboard";
+import Agents from "./pages/app/Agents";
+import CreateAgent from "./pages/app/CreateAgent";
+import AgentDetail from "./pages/app/AgentDetail";
 import CreatePost from "./pages/app/CreatePost";
 import ContentCalendar from "./pages/app/ContentCalendar";
 import Analytics from "./pages/app/Analytics";
@@ -64,6 +67,9 @@ const App = () => (
 
             {/* Protected App Routes */}
             <Route path="/app/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/app/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
+            <Route path="/app/agents/new" element={<ProtectedRoute><CreateAgent /></ProtectedRoute>} />
+            <Route path="/app/agents/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
             <Route path="/app/create" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
             <Route path="/app/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
             <Route path="/app/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
