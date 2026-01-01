@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScheduleDialog } from "@/components/posts/ScheduleDialog";
 import { 
   Briefcase, Users, Smile, BookOpen, Rocket, MessageCircle,
   Sparkles, Wand2, Save, Calendar, RefreshCw, Copy, Check,
@@ -48,6 +49,7 @@ const CreatePost = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -130,7 +132,7 @@ const CreatePost = () => {
     }
   };
 
-  const schedulePost = async () => {
+  const handleSchedule = async (scheduledAt: string) => {
     if (!generatedContent) {
       toast.error("Generate content first");
       return;
@@ -146,14 +148,15 @@ const CreatePost = () => {
         post_length: postLength,
         guidance: guidance || null,
         status: "scheduled",
-        scheduled_at: null,
+        scheduled_at: scheduledAt,
       });
 
       if (error) throw new Error(error);
-      toast.success("Post ready for scheduling!");
+      toast.success("Post scheduled successfully!");
+      setScheduleDialogOpen(false);
       navigate("/app/calendar");
     } catch (error: any) {
-      toast.error(error.message || "Failed to save post");
+      toast.error(error.message || "Failed to schedule post");
     } finally {
       setIsSaving(false);
     }
@@ -385,7 +388,7 @@ const CreatePost = () => {
                   Save Draft
                 </Button>
                 <Button
-                  onClick={schedulePost}
+                  onClick={() => setScheduleDialogOpen(true)}
                   disabled={isSaving}
                   className="flex-1"
                 >
@@ -398,6 +401,13 @@ const CreatePost = () => {
           </div>
         </div>
       </div>
+
+      <ScheduleDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        onSchedule={handleSchedule}
+        isLoading={isSaving}
+      />
     </AppLayout>
   );
 };

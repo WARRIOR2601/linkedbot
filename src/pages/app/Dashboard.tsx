@@ -1,22 +1,26 @@
+import { useMemo } from "react";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
+import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { usePosts } from "@/hooks/usePosts";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
-  TrendingDown,
   Users,
   Eye,
-  MessageSquare,
-  Heart,
-  Share2,
   Calendar,
   Sparkles,
   AlertCircle,
   Plus,
   BarChart3,
+  FileText,
+  Clock,
+  CalendarCheck,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import {
   AreaChart,
   Area,
@@ -29,7 +33,7 @@ import {
   Bar,
 } from "recharts";
 
-// Mock data
+// Mock analytics data (will be replaced with real data in future steps)
 const engagementData = [
   { name: "Mon", views: 1200, likes: 80, comments: 24 },
   { name: "Tue", views: 1800, likes: 120, comments: 45 },
@@ -40,68 +44,61 @@ const engagementData = [
   { name: "Sun", views: 600, likes: 35, comments: 12 },
 ];
 
-const weeklyPerformance = [
-  { name: "Week 1", posts: 5, engagement: 2400 },
-  { name: "Week 2", posts: 7, engagement: 3200 },
-  { name: "Week 3", posts: 4, engagement: 1800 },
-  { name: "Week 4", posts: 8, engagement: 4100 },
-];
-
-const stats = [
-  {
-    title: "Profile Views",
-    value: "2,547",
-    change: "+12.5%",
-    trend: "up",
-    icon: Eye,
-  },
-  {
-    title: "Post Impressions",
-    value: "45.2K",
-    change: "+28.3%",
-    trend: "up",
-    icon: BarChart3,
-  },
-  {
-    title: "Followers",
-    value: "1,234",
-    change: "+8.1%",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    title: "Engagement Rate",
-    value: "4.2%",
-    change: "-2.4%",
-    trend: "down",
-    icon: Heart,
-  },
-];
-
-const scheduledPosts = [
-  { title: "5 AI Tools Every Marketer Needs", time: "Today, 9:00 AM", status: "scheduled" },
-  { title: "Why Personal Branding Matters", time: "Tomorrow, 2:00 PM", status: "scheduled" },
-  { title: "Leadership Lessons from...", time: "Wed, 10:00 AM", status: "draft" },
-];
-
-const recentPosts = [
-  {
-    title: "The Future of Remote Work",
-    impressions: "12.4K",
-    likes: 245,
-    comments: 38,
-    shares: 12,
-  },
-  {
-    title: "How I Built My Network",
-    impressions: "8.7K",
-    likes: 189,
-    comments: 52,
-    shares: 8,
-  },
-];
-
 const Dashboard = () => {
+  const { user } = useAuth();
+  const { posts, isLoading } = usePosts();
+
+  // Calculate stats from real post data
+  const stats = useMemo(() => {
+    const scheduledPosts = posts.filter((p) => p.status === "scheduled");
+    const draftPosts = posts.filter((p) => p.status === "draft");
+    const totalPosts = posts.length;
+    
+    // Get next scheduled post
+    const upcomingScheduled = scheduledPosts
+      .filter((p) => p.scheduled_at && parseISO(p.scheduled_at) >= new Date())
+      .sort((a, b) => {
+        const dateA = a.scheduled_at ? parseISO(a.scheduled_at) : new Date();
+        const dateB = b.scheduled_at ? parseISO(b.scheduled_at) : new Date();
+        return dateA.getTime() - dateB.getTime();
+      });
+
+    const nextPost = upcomingScheduled[0];
+
+    return {
+      totalPosts,
+      scheduledCount: scheduledPosts.length,
+      draftCount: draftPosts.length,
+      upcomingCount: upcomingScheduled.length,
+      nextPost,
+    };
+  }, [posts]);
+
+  // Get upcoming scheduled posts
+  const upcomingPosts = useMemo(() => {
+    return posts
+      .filter((p) => p.status === "scheduled" && p.scheduled_at && parseISO(p.scheduled_at) >= new Date())
+      .sort((a, b) => {
+        const dateA = a.scheduled_at ? parseISO(a.scheduled_at) : new Date();
+        const dateB = b.scheduled_at ? parseISO(b.scheduled_at) : new Date();
+        return dateA.getTime() - dateB.getTime();
+      })
+      .slice(0, 3);
+  }, [posts]);
+
+  // Get recent posts (both draft and scheduled)
+  const recentPosts = useMemo(() => {
+    return posts
+      .sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime())
+      .slice(0, 3);
+  }, [posts]);
+
+  if (isLoading) {
+    return <DashboardLoading />;
+  }
+
+  const displayName = user?.email?.split("@")[0] || "there";
+
   return (
     <AppLayout>
       <div className="space-y-8">
@@ -109,13 +106,13 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, John! Here's your LinkedIn performance.</p>
+            <p className="text-muted-foreground">Welcome back, {displayName}!</p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" asChild>
-              <Link to="/app/analytics">
-                <BarChart3 className="w-4 h-4 mr-2" />
-                View Analytics
+              <Link to="/app/calendar">
+                <Calendar className="w-4 h-4 mr-2" />
+                View Calendar
               </Link>
             </Button>
             <Button variant="hero" asChild>
@@ -129,41 +126,85 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div
-                    className={`flex items-center gap-1 text-sm ${
-                      stat.trend === "up" ? "text-success" : "text-destructive"
-                    }`}
-                  >
-                    {stat.trend === "up" ? (
-                      <TrendingUp className="w-4 h-4" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4" />
-                    )}
-                    {stat.change}
-                  </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary" />
                 </div>
-                <div className="mt-4">
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
+                <TrendingUp className="w-4 h-4 text-success" />
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{stats.totalPosts}</p>
+                <p className="text-sm text-muted-foreground">Total Posts</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <CalendarCheck className="w-5 h-5 text-success" />
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{stats.upcomingCount}</p>
+                <p className="text-sm text-muted-foreground">Scheduled Posts</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-warning" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{stats.draftCount}</p>
+                <p className="text-sm text-muted-foreground">Draft Posts</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-accent-foreground" />
+                </div>
+              </div>
+              <div className="mt-4">
+                {stats.nextPost ? (
+                  <>
+                    <p className="text-lg font-bold">
+                      {formatDistanceToNow(parseISO(stats.nextPost.scheduled_at!), { addSuffix: true })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Next Scheduled</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-bold">No posts</p>
+                    <p className="text-sm text-muted-foreground">Schedule one now</p>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts Row */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Engagement Chart */}
+          {/* Engagement Chart (placeholder for future analytics) */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-lg">Engagement Overview</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Engagement Overview
+                <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
@@ -212,35 +253,36 @@ const Dashboard = () => {
           {/* Scheduled Posts */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Scheduled Posts</CardTitle>
+              <CardTitle className="text-lg">Upcoming Posts</CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/app/calendar">View All</Link>
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {scheduledPosts.map((post, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Calendar className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{post.title}</p>
-                    <p className="text-sm text-muted-foreground">{post.time}</p>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      post.status === "scheduled"
-                        ? "bg-success/20 text-success"
-                        : "bg-warning/20 text-warning"
-                    }`}
-                  >
-                    {post.status}
-                  </span>
+              {upcomingPosts.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No scheduled posts</p>
                 </div>
-              ))}
+              ) : (
+                upcomingPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Calendar className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{post.content.slice(0, 40)}...</p>
+                      <p className="text-sm text-muted-foreground">
+                        {post.scheduled_at && format(parseISO(post.scheduled_at), "MMM d 'at' h:mm a")}
+                      </p>
+                    </div>
+                    <Badge variant="default" className="shrink-0">scheduled</Badge>
+                  </div>
+                ))
+              )}
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/app/create">
                   <Sparkles className="w-4 h-4 mr-2" />
@@ -251,69 +293,54 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Weekly Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Weekly Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyPerformance}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar dataKey="engagement" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+        {/* Recent Posts */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Recent Posts</CardTitle>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/app/calendar">View All</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recentPosts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No posts yet</p>
+                <Button variant="link" asChild>
+                  <Link to="/app/create">Create your first post</Link>
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Posts */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Recent Posts</CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/app/analytics">View All</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {recentPosts.map((post, index) => (
-                <div key={index} className="p-4 rounded-lg bg-muted/50">
-                  <p className="font-medium mb-3">{post.title}</p>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {post.impressions}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Heart className="w-4 h-4" />
-                      {post.likes}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="w-4 h-4" />
-                      {post.comments}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Share2 className="w-4 h-4" />
-                      {post.shares}
-                    </span>
+            ) : (
+              <div className="space-y-4">
+                {recentPosts.map((post) => (
+                  <div key={post.id} className="p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium mb-2 line-clamp-2">{post.content.slice(0, 100)}...</p>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                          <span>Created {format(parseISO(post.created_at), "MMM d, yyyy")}</span>
+                          {post.tags && post.tags.length > 0 && (
+                            <>
+                              <span>•</span>
+                              {post.tags.slice(0, 3).map((tag) => (
+                                <Badge key={tag} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant={post.status === "scheduled" ? "default" : "secondary"}>
+                        {post.status}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
