@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      client_ai_profiles: {
+        Row: {
+          business_name: string | null
+          created_at: string
+          description: string | null
+          goals: string[] | null
+          id: string
+          industry: string | null
+          is_complete: boolean
+          posting_frequency: string | null
+          target_audience: string | null
+          tone_of_voice: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_name?: string | null
+          created_at?: string
+          description?: string | null
+          goals?: string[] | null
+          id?: string
+          industry?: string | null
+          is_complete?: boolean
+          posting_frequency?: string | null
+          target_audience?: string | null
+          tone_of_voice?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_name?: string | null
+          created_at?: string
+          description?: string | null
+          goals?: string[] | null
+          id?: string
+          industry?: string | null
+          is_complete?: boolean
+          posting_frequency?: string | null
+          target_audience?: string | null
+          tone_of_voice?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

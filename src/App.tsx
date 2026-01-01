@@ -3,6 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PublicRoute from "@/components/auth/PublicRoute";
+import DiagnosticsPanel from "@/components/auth/DiagnosticsPanel";
 
 // Public Pages
 import Landing from "./pages/Landing";
@@ -38,34 +42,43 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/onboarding" element={<Onboarding />} />
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes - No auth required */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
 
-          {/* App Routes */}
-          <Route path="/app/dashboard" element={<Dashboard />} />
-          <Route path="/app/create" element={<CreatePost />} />
-          <Route path="/app/calendar" element={<ContentCalendar />} />
-          <Route path="/app/analytics" element={<Analytics />} />
-          <Route path="/app/linkedin" element={<LinkedInConnect />} />
-          <Route path="/app/settings" element={<Settings />} />
-          <Route path="/app/billing" element={<Billing />} />
+            {/* Auth Routes - Redirect if already logged in */}
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
-          <Route path="/admin/ai-models" element={<AdminAIModels />} />
-          <Route path="/admin/logs" element={<AdminLogs />} />
+            {/* Onboarding - Protected but with special handling */}
+            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* Protected App Routes */}
+            <Route path="/app/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/app/create" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
+            <Route path="/app/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
+            <Route path="/app/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/app/linkedin" element={<ProtectedRoute><LinkedInConnect /></ProtectedRoute>} />
+            <Route path="/app/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/app/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+
+            {/* Admin Routes - Also protected */}
+            <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminSubscriptions /></ProtectedRoute>} />
+            <Route path="/admin/ai-models" element={<ProtectedRoute><AdminAIModels /></ProtectedRoute>} />
+            <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          
+          {/* Diagnostics Panel - Always visible for debugging */}
+          <DiagnosticsPanel />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

@@ -1,26 +1,114 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Linkedin, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Linkedin, ArrowRight, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const steps = [
-  { id: 1, title: "Personal Info", description: "Tell us about yourself" },
-  { id: 2, title: "Business Details", description: "Your professional background" },
+  { id: 1, title: "Business Info", description: "Tell us about your business" },
+  { id: 2, title: "Target Audience", description: "Who are you trying to reach?" },
   { id: 3, title: "Content Goals", description: "What do you want to achieve?" },
 ];
 
+const goalOptions = [
+  "Build personal brand",
+  "Generate leads",
+  "Share expertise",
+  "Network growth",
+  "Thought leadership",
+  "Career opportunities",
+];
+
+const toneOptions = [
+  "Professional",
+  "Conversational",
+  "Inspirational",
+  "Educational",
+  "Humorous",
+  "Authoritative",
+];
+
+const frequencyOptions = [
+  "1-2 times per week",
+  "3-4 times per week",
+  "Daily",
+  "Multiple times per day",
+];
+
 const Onboarding = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { completeOnboarding, isLoading: profileLoading, isComplete } = useOnboarding();
+  
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [businessName, setBusinessName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [description, setDescription] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [toneOfVoice, setToneOfVoice] = useState("");
+  const [postingFrequency, setPostingFrequency] = useState("");
+
   const progress = (currentStep / steps.length) * 100;
+
+  const toggleGoal = (goal: string) => {
+    setSelectedGoals((prev) =>
+      prev.includes(goal) ? prev.filter((g) => g !== goal) : [...prev, goal]
+    );
+  };
+
+  const handleComplete = async () => {
+    setIsSubmitting(true);
+    
+    const { error } = await completeOnboarding({
+      business_name: businessName,
+      industry,
+      description,
+      target_audience: targetAudience,
+      goals: selectedGoals,
+      tone_of_voice: toneOfVoice,
+      posting_frequency: postingFrequency,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error saving profile",
+        description: error,
+      });
+      return;
+    }
+
+    toast({
+      title: "Profile complete!",
+      description: "Welcome to Linkedbot. Let's create some amazing content.",
+    });
+
+    navigate("/app/dashboard");
+  };
+
+  // If already complete, this will be handled by ProtectedRoute
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Background effects */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
 
@@ -53,11 +141,7 @@ const Onboarding = () => {
                       : "bg-muted"
                   }`}
                 >
-                  {step.id < currentStep ? (
-                    <CheckCircle2 className="w-5 h-5" />
-                  ) : (
-                    step.id
-                  )}
+                  {step.id < currentStep ? <CheckCircle2 className="w-5 h-5" /> : step.id}
                 </div>
                 <span className="hidden sm:block text-sm">{step.title}</span>
               </div>
@@ -74,26 +158,33 @@ const Onboarding = () => {
           <CardContent className="space-y-6">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First name</Label>
-                    <Input id="firstName" placeholder="John" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last name</Label>
-                    <Input id="lastName" placeholder="Doe" />
-                  </div>
-                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="headline">LinkedIn Headline</Label>
+                  <Label htmlFor="businessName">Business / Brand Name</Label>
                   <Input
-                    id="headline"
-                    placeholder="e.g., Marketing Director | Growth Expert"
+                    id="businessName"
+                    placeholder="Your company or personal brand name"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" placeholder="San Francisco, CA" />
+                  <Label htmlFor="industry">Industry</Label>
+                  <Input
+                    id="industry"
+                    placeholder="e.g., Technology, Marketing, Finance"
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Business Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Briefly describe what you do and what makes you unique..."
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
                 </div>
               </div>
             )}
@@ -101,24 +192,33 @@ const Onboarding = () => {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input id="company" placeholder="Your company name" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input id="role" placeholder="Your current role" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input id="industry" placeholder="e.g., Technology, Marketing" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Short Bio</Label>
+                  <Label htmlFor="targetAudience">Target Audience</Label>
                   <Textarea
-                    id="bio"
-                    placeholder="Tell us a bit about your professional background..."
+                    id="targetAudience"
+                    placeholder="Describe your ideal audience (e.g., CTOs at B2B SaaS companies, HR professionals in healthcare, etc.)"
                     rows={4}
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Preferred Tone of Voice</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {toneOptions.map((tone) => (
+                      <button
+                        key={tone}
+                        type="button"
+                        onClick={() => setToneOfVoice(tone)}
+                        className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                          toneOfVoice === tone
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        {tone}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -126,19 +226,18 @@ const Onboarding = () => {
             {currentStep === 3 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>What are your main goals?</Label>
+                  <Label>What are your main goals? (Select all that apply)</Label>
                   <div className="grid grid-cols-2 gap-3">
-                    {[
-                      "Build personal brand",
-                      "Generate leads",
-                      "Share expertise",
-                      "Network growth",
-                      "Thought leadership",
-                      "Career opportunities",
-                    ].map((goal) => (
+                    {goalOptions.map((goal) => (
                       <button
                         key={goal}
-                        className="p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 text-sm text-left transition-all"
+                        type="button"
+                        onClick={() => toggleGoal(goal)}
+                        className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                          selectedGoals.includes(goal)
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
                       >
                         {goal}
                       </button>
@@ -146,20 +245,23 @@ const Onboarding = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="topics">Content Topics (comma separated)</Label>
-                  <Input
-                    id="topics"
-                    placeholder="e.g., AI, Marketing, Leadership"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="frequency">Posting Frequency</Label>
-                  <select className="w-full h-11 rounded-lg border border-border bg-secondary/50 px-4 text-sm">
-                    <option>1-2 times per week</option>
-                    <option>3-4 times per week</option>
-                    <option>Daily</option>
-                    <option>Multiple times per day</option>
-                  </select>
+                  <Label>Posting Frequency</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {frequencyOptions.map((freq) => (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => setPostingFrequency(freq)}
+                        className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                          postingFrequency === freq
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -183,11 +285,13 @@ const Onboarding = () => {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button variant="hero" asChild>
-                  <Link to="/app/dashboard">
-                    Complete Setup
-                    <CheckCircle2 className="w-4 h-4 ml-2" />
-                  </Link>
+                <Button variant="hero" onClick={handleComplete} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  Complete Setup
                 </Button>
               )}
             </div>

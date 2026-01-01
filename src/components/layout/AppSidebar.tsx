@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   PenSquare,
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
@@ -26,7 +27,24 @@ const menuItems = [
 
 const AppSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  // Get user initials from email
+  const getUserInitials = () => {
+    if (!user?.email) return "U";
+    const parts = user.email.split("@")[0].split(".");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return user.email.slice(0, 2).toUpperCase();
+  };
 
   return (
     <aside
@@ -81,19 +99,17 @@ const AppSidebar = () => {
       <div className="p-4 border-t border-sidebar-border">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-medium text-primary-foreground">
-            JD
+            {getUserInitials()}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+              <p className="text-sm font-medium truncate">{user?.email?.split("@")[0] || "User"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           )}
           {!collapsed && (
-            <Button variant="ghost" size="icon" className="shrink-0" asChild>
-              <Link to="/login">
-                <LogOut className="w-4 h-4" />
-              </Link>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={handleLogout}>
+              <LogOut className="w-4 h-4" />
             </Button>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" },
@@ -23,7 +24,14 @@ const menuItems = [
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <aside
@@ -83,14 +91,12 @@ const AdminSidebar = () => {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">Admin</p>
-              <p className="text-xs text-muted-foreground truncate">admin@linkedbot.com</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           )}
           {!collapsed && (
-            <Button variant="ghost" size="icon" className="shrink-0" asChild>
-              <Link to="/login">
-                <LogOut className="w-4 h-4" />
-              </Link>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={handleLogout}>
+              <LogOut className="w-4 h-4" />
             </Button>
           )}
         </div>
