@@ -24,6 +24,7 @@ import Dashboard from "./pages/app/Dashboard";
 import CreatePost from "./pages/app/CreatePost";
 import ContentCalendar from "./pages/app/ContentCalendar";
 import Analytics from "./pages/app/Analytics";
+import TrainAI from "./pages/app/TrainAI";
 import LinkedInConnect from "./pages/app/LinkedInConnect";
 import Settings from "./pages/app/Settings";
 import Billing from "./pages/app/Billing";
@@ -66,6 +67,7 @@ const App = () => (
             <Route path="/app/create" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
             <Route path="/app/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
             <Route path="/app/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/app/train-ai" element={<ProtectedRoute><TrainAI /></ProtectedRoute>} />
             <Route path="/app/linkedin" element={<ProtectedRoute><LinkedInConnect /></ProtectedRoute>} />
             <Route path="/app/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/app/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />

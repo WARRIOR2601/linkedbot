@@ -9,6 +9,7 @@ import {
   CreditCard,
   ChevronLeft,
   LogOut,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const menuItems = [
   { icon: PenSquare, label: "Create Post", href: "/app/create" },
   { icon: Calendar, label: "Calendar", href: "/app/calendar" },
   { icon: BarChart3, label: "Analytics", href: "/app/analytics" },
+  { icon: Brain, label: "Train AI", href: "/app/train-ai" },
   { icon: Linkedin, label: "LinkedIn", href: "/app/linkedin" },
   { icon: Settings, label: "Settings", href: "/app/settings" },
   { icon: CreditCard, label: "Billing", href: "/app/billing" },

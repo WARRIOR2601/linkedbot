@@ -1,226 +1,400 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePosts } from "@/hooks/usePosts";
+import { AI_MODELS, AVAILABLE_TAGS, POST_LENGTHS, AIModelId, PostLength } from "@/lib/ai-models";
+import { toast } from "sonner";
 import AppLayout from "@/components/layout/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Sparkles,
-  RefreshCw,
-  Calendar,
-  Send,
-  Lightbulb,
-  FileText,
-  TrendingUp,
-  MessageSquare,
-  Award,
-  BookOpen,
-  Copy,
-  Check,
+import { 
+  Briefcase, Users, Smile, BookOpen, Rocket, MessageCircle,
+  Sparkles, Wand2, Save, Calendar, RefreshCw, Copy, Check,
+  ChevronRight
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const postTypes = [
-  { id: "thought-leadership", label: "Thought Leadership", icon: Lightbulb, description: "Share your expertise" },
-  { id: "story", label: "Personal Story", icon: BookOpen, description: "Connect through storytelling" },
-  { id: "tips", label: "How-To / Tips", icon: FileText, description: "Teach something valuable" },
-  { id: "engagement", label: "Engagement Hook", icon: MessageSquare, description: "Spark conversation" },
-  { id: "achievement", label: "Win/Achievement", icon: Award, description: "Celebrate milestones" },
-  { id: "trend", label: "Industry Trend", icon: TrendingUp, description: "Comment on trends" },
-];
+const iconMap = {
+  Briefcase,
+  Users,
+  Smile,
+  BookOpen,
+  Rocket,
+  MessageCircle,
+};
 
 const CreatePost = () => {
-  const [selectedType, setSelectedType] = useState("thought-leadership");
-  const [topic, setTopic] = useState("");
+  const navigate = useNavigate();
+  const { session } = useAuth();
+  const { createPost } = usePosts();
+  
+  const [selectedModel, setSelectedModel] = useState<AIModelId>("professional");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [guidance, setGuidance] = useState("");
+  const [postLength, setPostLength] = useState<PostLength>("medium");
+  
   const [generatedContent, setGeneratedContent] = useState("");
+  const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    // Simulate AI generation
-    setTimeout(() => {
-      setGeneratedContent(
-        `🚀 Here's a truth about ${topic || "leadership"} that took me years to learn:\n\nThe best leaders don't have all the answers. They have the best questions.\n\nI used to think being in charge meant knowing everything. But after 10 years in tech, I've realized:\n\n→ Asking "What do you think?" builds trust\n→ Saying "I don't know" invites collaboration\n→ Admitting mistakes creates psychological safety\n\nThe most powerful phrase a leader can use?\n\n"Help me understand."\n\nIt's not weakness. It's wisdom.\n\nWhat's the most valuable lesson you've learned about leadership?\n\n#Leadership #Growth #CareerAdvice`
-      );
-      setIsGenerating(false);
-    }, 2000);
+  const toggleTag = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter(t => t !== tag));
+    } else if (selectedTags.length < 5) {
+      setSelectedTags([...selectedTags, tag]);
+    } else {
+      toast.error("Maximum 5 tags allowed");
+    }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(generatedContent);
+  const generatePost = async () => {
+    if (!session?.access_token) {
+      toast.error("Please log in to generate posts");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-post`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            aiModel: selectedModel,
+            tags: selectedTags,
+            guidance,
+            postLength,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate post");
+      }
+
+      setGeneratedContent(data.content);
+      setGeneratedHashtags(data.hashtags || []);
+      toast.success("Post generated successfully!");
+    } catch (error: any) {
+      console.error("Generation error:", error);
+      toast.error(error.message || "Failed to generate post");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const saveAsDraft = async () => {
+    if (!generatedContent) {
+      toast.error("Generate content first");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await createPost({
+        content: generatedContent,
+        ai_model: selectedModel,
+        tags: selectedTags,
+        hashtags: generatedHashtags,
+        post_length: postLength,
+        guidance: guidance || null,
+        status: "draft",
+        scheduled_at: null,
+      });
+
+      if (error) throw new Error(error);
+      toast.success("Post saved as draft!");
+      navigate("/app/calendar");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save post");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const schedulePost = async () => {
+    if (!generatedContent) {
+      toast.error("Generate content first");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await createPost({
+        content: generatedContent,
+        ai_model: selectedModel,
+        tags: selectedTags,
+        hashtags: generatedHashtags,
+        post_length: postLength,
+        guidance: guidance || null,
+        status: "scheduled",
+        scheduled_at: null,
+      });
+
+      if (error) throw new Error(error);
+      toast.success("Post ready for scheduling!");
+      navigate("/app/calendar");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save post");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const copyToClipboard = async () => {
+    const fullContent = generatedContent + 
+      (generatedHashtags.length > 0 ? "\n\n" + generatedHashtags.map(h => `#${h}`).join(" ") : "");
+    
+    await navigator.clipboard.writeText(fullContent);
     setCopied(true);
+    toast.success("Copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <AppLayout>
-      <div className="space-y-8">
-        {/* Header */}
+      <div className="space-y-6 max-w-6xl mx-auto">
         <div>
           <h1 className="text-3xl font-bold">Create Post</h1>
-          <p className="text-muted-foreground">Generate engaging LinkedIn content with AI</p>
+          <p className="text-muted-foreground mt-1">
+            Generate AI-powered LinkedIn content tailored to your brand
+          </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left Column - Input */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Left Column - Configuration */}
           <div className="space-y-6">
-            {/* Post Type Selection */}
+            {/* AI Model Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Post Type</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  AI Post Style
+                </CardTitle>
+                <CardDescription>
+                  Choose the tone and style for your post
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {postTypes.map((type) => (
+              <CardContent className="space-y-3">
+                {AI_MODELS.map((model) => {
+                  const Icon = iconMap[model.icon as keyof typeof iconMap];
+                  return (
                     <button
-                      key={type.id}
-                      onClick={() => setSelectedType(type.id)}
-                      className={`p-4 rounded-lg border text-left transition-all ${
-                        selectedType === type.id
+                      key={model.id}
+                      onClick={() => setSelectedModel(model.id)}
+                      className={`w-full p-3 rounded-lg border text-left transition-all ${
+                        selectedModel === model.id
                           ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          : "border-border hover:border-primary/50"
                       }`}
                     >
-                      <type.icon
-                        className={`w-5 h-5 mb-2 ${
-                          selectedType === type.id ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      />
-                      <p className="font-medium text-sm">{type.label}</p>
-                      <p className="text-xs text-muted-foreground">{type.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-md ${
+                          selectedModel === model.id ? "bg-primary/20" : "bg-muted"
+                        }`}>
+                          <Icon className={`h-4 w-4 ${
+                            selectedModel === model.id ? "text-primary" : "text-muted-foreground"
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{model.name}</p>
+                          <p className="text-xs text-muted-foreground">{model.description}</p>
+                        </div>
+                        {selectedModel === model.id && (
+                          <Check className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
                     </button>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+            {/* Tags Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Content Tags</CardTitle>
+                <CardDescription>
+                  Select up to 5 tags to guide content themes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_TAGS.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant={selectedTags.includes(tag) ? "default" : "outline"}
+                      className="cursor-pointer transition-all hover:scale-105"
+                      onClick={() => toggleTag(tag)}
+                    >
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Topic Input */}
+            {/* Post Length & Guidance */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Topic & Context</CardTitle>
+                <CardTitle className="text-lg">Post Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="topic">Main Topic</Label>
-                  <Input
-                    id="topic"
-                    placeholder="e.g., Remote work productivity tips"
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                  />
+                  <Label>Post Length</Label>
+                  <Select value={postLength} onValueChange={(v) => setPostLength(v as PostLength)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POST_LENGTHS.map((length) => (
+                        <SelectItem key={length.id} value={length.id}>
+                          {length.name} ({length.description})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="context">Additional Context (optional)</Label>
+                  <Label>Additional Guidance (Optional)</Label>
                   <Textarea
-                    id="context"
-                    placeholder="Add any specific points, experiences, or angles you want to include..."
-                    rows={4}
+                    value={guidance}
+                    onChange={(e) => setGuidance(e.target.value)}
+                    placeholder="E.g., 'Focus on our recent product launch' or 'Include a call to action for demos'"
+                    className="min-h-[80px]"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tone">Tone</Label>
-                  <select className="w-full h-11 rounded-lg border border-border bg-secondary/50 px-4 text-sm">
-                    <option>Professional</option>
-                    <option>Conversational</option>
-                    <option>Inspirational</option>
-                    <option>Educational</option>
-                    <option>Humorous</option>
-                  </select>
-                </div>
-                <Button
-                  variant="hero"
-                  className="w-full"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Post
-                    </>
-                  )}
-                </Button>
               </CardContent>
             </Card>
+
+            <Button 
+              onClick={generatePost} 
+              disabled={isGenerating}
+              className="w-full h-12 text-base"
+              size="lg"
+            >
+              {isGenerating ? (
+                <>
+                  <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-5 w-5" />
+                  Generate Post
+                </>
+              )}
+            </Button>
           </div>
 
-          {/* Right Column - Preview */}
+          {/* Right Column - Preview & Actions */}
           <div className="space-y-6">
-            <Card className="h-full">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Generated Content</CardTitle>
-                {generatedContent && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleGenerate}>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Regenerate
+            <Card className="min-h-[500px]">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  <span>Generated Post</span>
+                  {generatedContent && (
+                    <Button variant="ghost" size="sm" onClick={copyToClipboard}>
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleCopy}>
-                      {copied ? (
-                        <Check className="w-4 h-4 mr-2" />
-                      ) : (
-                        <Copy className="w-4 h-4 mr-2" />
-                      )}
-                      {copied ? "Copied!" : "Copy"}
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {isGenerating ? (
                   <div className="space-y-4">
                     <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-5/6" />
-                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-[90%]" />
+                    <Skeleton className="h-4 w-[80%]" />
+                    <Skeleton className="h-4 w-[95%]" />
+                    <Skeleton className="h-4 w-[70%]" />
                     <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-[85%]" />
                   </div>
                 ) : generatedContent ? (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-muted/50 min-h-[300px]">
-                      <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-medium text-primary-foreground">
-                          JD
-                        </div>
-                        <div>
-                          <p className="font-medium">John Doe</p>
-                          <p className="text-xs text-muted-foreground">Marketing Director | Growth Expert</p>
+                    <Textarea
+                      value={generatedContent}
+                      onChange={(e) => setGeneratedContent(e.target.value)}
+                      className="min-h-[300px] text-sm leading-relaxed"
+                    />
+                    {generatedHashtags.length > 0 && (
+                      <div className="pt-4 border-t border-border">
+                        <Label className="text-xs text-muted-foreground mb-2 block">
+                          Suggested Hashtags
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {generatedHashtags.map((tag) => (
+                            <Badge key={tag} variant="secondary">
+                              #{tag}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
-                      <div className="whitespace-pre-wrap text-sm">{generatedContent}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Button variant="hero" className="flex-1">
-                        <Send className="w-4 h-4 mr-2" />
-                        Post Now
-                      </Button>
-                      <Button variant="outline" className="flex-1">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Schedule
-                      </Button>
-                    </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                      <Sparkles className="w-8 h-8 text-primary" />
+                  <div className="h-[300px] flex items-center justify-center text-center">
+                    <div className="text-muted-foreground">
+                      <Wand2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Configure your post settings and click Generate</p>
+                      <p className="text-sm mt-1">AI will create personalized content</p>
                     </div>
-                    <h3 className="font-semibold mb-2">Ready to Create</h3>
-                    <p className="text-sm text-muted-foreground max-w-[250px]">
-                      Select a post type, enter your topic, and click generate to create your post.
-                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {generatedContent && (
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={generatePost}
+                  disabled={isGenerating}
+                  className="flex-1"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
+                  Regenerate
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={saveAsDraft}
+                  disabled={isSaving}
+                  className="flex-1"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Draft
+                </Button>
+                <Button
+                  onClick={schedulePost}
+                  disabled={isSaving}
+                  className="flex-1"
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Schedule
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

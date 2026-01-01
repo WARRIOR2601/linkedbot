@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_training_updates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          update_type: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          update_type?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          update_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       client_ai_profiles: {
         Row: {
           account_status: string
@@ -57,6 +81,51 @@ export type Database = {
           posting_frequency?: string | null
           target_audience?: string | null
           tone_of_voice?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          ai_model: string
+          content: string
+          created_at: string
+          guidance: string | null
+          hashtags: string[] | null
+          id: string
+          post_length: string
+          scheduled_at: string | null
+          status: string
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_model: string
+          content: string
+          created_at?: string
+          guidance?: string | null
+          hashtags?: string[] | null
+          id?: string
+          post_length?: string
+          scheduled_at?: string | null
+          status?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_model?: string
+          content?: string
+          created_at?: string
+          guidance?: string | null
+          hashtags?: string[] | null
+          id?: string
+          post_length?: string
+          scheduled_at?: string | null
+          status?: string
+          tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
