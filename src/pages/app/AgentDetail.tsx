@@ -132,15 +132,15 @@ const AgentDetail = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant={agent.status === "running" ? "outline" : "default"}
+              variant={agent.status === "active" ? "outline" : "default"}
               onClick={() =>
                 toggleAgentStatus.mutate({
                   id: agent.id,
-                  status: agent.status === "running" ? "paused" : "running",
+                  status: agent.status === "active" ? "paused" : "active",
                 })
               }
             >
-              {agent.status === "running" ? (
+              {agent.status === "active" ? (
                 <>
                   <Pause className="w-4 h-4 mr-2" />
                   Pause Agent
@@ -181,18 +181,18 @@ const AgentDetail = () => {
         </div>
 
         {/* Status Banner */}
-        <Card className={agent.status === "running" ? "border-success/50 bg-success/5" : "border-warning/50 bg-warning/5"}>
+        <Card className={agent.status === "active" ? "border-success/50 bg-success/5" : "border-warning/50 bg-warning/5"}>
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {agent.status === "running" ? (
+              {agent.status === "active" ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="font-medium text-success">Agent is running</span>
+                  <span className="font-medium text-success">Agent is active</span>
                 </>
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-warning" />
-                  <span className="font-medium text-warning">Agent is paused</span>
+                  <span className="font-medium text-warning">Agent is {agent.status}</span>
                 </>
               )}
             </div>

@@ -5,21 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useAgentAnalytics, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useAnalytics, TimeRange } from "@/hooks/useAnalytics";
 import TagAnalyticsChart from "@/components/analytics/TagAnalyticsChart";
 import {
   TrendingUp,
   TrendingDown,
+  Bot,
   Eye,
   Heart,
   MessageSquare,
-  Share2,
   FileText,
   BarChart3,
   Clock,
   ArrowUpRight,
   Sparkles,
   Info,
+  Image as ImageIcon,
+  Type,
+  Lightbulb,
 } from "lucide-react";
 import {
   AreaChart,
@@ -32,57 +36,50 @@ import {
   PieChart,
   Pie,
   Cell,
+  BarChart,
+  Bar,
 } from "recharts";
+import { formatDistanceToNow, parseISO } from "date-fns";
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
+  const { data: agentData, isLoading: agentLoading } = useAgentAnalytics();
   const {
-    isLoading,
+    isLoading: analyticsLoading,
     overviewStats,
     engagementTrends,
     tagAnalytics,
-    aiModelPerformance,
     topPosts,
     bestPostingTimes,
-    contentMix,
     hasData,
     hasPosts,
   } = useAnalytics(timeRange);
+
+  const isLoading = agentLoading || analyticsLoading;
 
   if (isLoading) {
     return <AnalyticsLoading />;
   }
 
-  if (!hasData) {
+  if (!agentData || agentData.agents.length === 0) {
     return <AnalyticsEmpty />;
   }
 
-  const statsCards = [
-    { 
-      title: "Total Posts", 
-      value: overviewStats.totalPosts.toString(), 
-      icon: FileText,
-      color: "text-primary"
-    },
-    { 
-      title: "Posted", 
-      value: overviewStats.postedPosts.toString(), 
-      icon: ArrowUpRight,
-      color: "text-success"
-    },
-    { 
-      title: "Scheduled", 
-      value: overviewStats.scheduledPosts.toString(), 
-      icon: Clock,
-      color: "text-warning"
-    },
-    { 
-      title: "Drafts", 
-      value: overviewStats.draftPosts.toString(), 
-      icon: BarChart3,
-      color: "text-muted-foreground"
-    },
-  ];
+  // Generate insights based on data
+  const insights = generateInsights(agentData);
+
+  // Prepare agent performance data for chart
+  const agentChartData = agentData.agents.map((agent) => ({
+    name: agent.name.slice(0, 10),
+    posts: agent.postsCreated,
+    engagement: agent.avgEngagement,
+  }));
+
+  // Image vs text chart data
+  const imageVsTextData = [
+    { name: "Image Posts", value: agentData.imageVsText.imagePosts, color: "hsl(var(--primary))" },
+    { name: "Text Only", value: agentData.imageVsText.textPosts, color: "hsl(var(--muted))" },
+  ].filter((d) => d.value > 0);
 
   return (
     <AppLayout>
@@ -91,7 +88,7 @@ const Analytics = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Analytics</h1>
-            <p className="text-muted-foreground">Track your LinkedIn performance</p>
+            <p className="text-muted-foreground">Agent performance & insights</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center rounded-lg border border-border overflow-hidden">
@@ -112,115 +109,179 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Info Banner */}
-        {!hasPosts && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Info className="w-5 h-5 text-primary shrink-0" />
-              <p className="text-sm">
-                <span className="font-medium">Engagement data will appear after your posts are published.</span>
-                {" "}Currently showing post statistics from your account.
-              </p>
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-primary" />
+                </div>
+                <Badge className="bg-success/10 text-success border-success/20">
+                  {agentData.agents.filter((a) => a.status === "active").length} active
+                </Badge>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{agentData.agents.length}</p>
+                <p className="text-sm text-muted-foreground">Total Agents</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-success" />
+                </div>
+                <TrendingUp className="w-4 h-4 text-success" />
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{agentData.totalPosts}</p>
+                <p className="text-sm text-muted-foreground">Posts Created</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ArrowUpRight className="w-5 h-5 text-primary" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{agentData.totalPublished}</p>
+                <p className="text-sm text-muted-foreground">Published</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-warning" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-bold">{agentData.totalScheduled}</p>
+                <p className="text-sm text-muted-foreground">Scheduled</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Insights Section */}
+        {insights.length > 0 && (
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-primary" />
+                Insights & Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {insights.map((insight, index) => (
+                  <div
+                    key={index}
+                    className="p-4 rounded-lg bg-background border flex items-start gap-3"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      insight.type === "positive" ? "bg-success/10 text-success" :
+                      insight.type === "negative" ? "bg-destructive/10 text-destructive" :
+                      "bg-primary/10 text-primary"
+                    }`}>
+                      {insight.type === "positive" ? <TrendingUp className="w-4 h-4" /> :
+                       insight.type === "negative" ? <TrendingDown className="w-4 h-4" /> :
+                       <Info className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{insight.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statsCards.map((stat, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className={`w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center`}>
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Main Charts */}
+        {/* Agent Performance */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Engagement Over Time */}
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                Engagement Over Time
-                {!hasPosts && <Badge variant="secondary">Data pending</Badge>}
+                <Bot className="w-5 h-5" />
+                Agent Performance
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {engagementTrends.length > 0 ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={engagementTrends}>
-                      <defs>
-                        <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="impressions"
-                        stroke="hsl(var(--primary))"
-                        fillOpacity={1}
-                        fill="url(#colorImpressions)"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="likes"
-                        stroke="hsl(var(--accent))"
-                        fillOpacity={1}
-                        fill="url(#colorLikes)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+              {agentData.agents.length > 0 ? (
+                <div className="space-y-4">
+                  {agentData.agents
+                    .sort((a, b) => b.avgEngagement - a.avgEngagement)
+                    .map((agent, index) => {
+                      const agentType = AGENT_TYPES.find((t) => t.id === agent.type);
+                      return (
+                        <div
+                          key={agent.id}
+                          className="flex items-center gap-4 p-4 rounded-lg bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                              {index + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{agent.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {agentType?.name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div className="text-center">
+                              <p className="font-bold">{agent.postsCreated}</p>
+                              <p className="text-xs text-muted-foreground">Posts</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="font-bold">{agent.avgEngagement.toFixed(1)}%</p>
+                              <p className="text-xs text-muted-foreground">Engagement</p>
+                            </div>
+                            <Badge className={getStatusColor(agent.status)}>
+                              {getStatusLabel(agent.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p>No engagement data yet</p>
-                    <p className="text-sm">Data will appear after posts are published</p>
-                  </div>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bot className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p>No agents yet</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Content Mix */}
+          {/* Image vs Text Performance */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Content Mix</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ImageIcon className="w-5 h-5" />
+                Content Type
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {contentMix.length > 0 ? (
+              {imageVsTextData.length > 0 ? (
                 <>
                   <div className="h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={contentMix}
+                          data={imageVsTextData}
                           cx="50%"
                           cy="50%"
                           innerRadius={50}
@@ -228,7 +289,7 @@ const Analytics = () => {
                           paddingAngle={5}
                           dataKey="value"
                         >
-                          {contentMix.map((entry, index) => (
+                          {imageVsTextData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
@@ -242,19 +303,36 @@ const Analytics = () => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="space-y-2 mt-4">
-                    {contentMix.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: item.color }}
-                          />
-                          <span>{item.name}</span>
-                        </div>
-                        <span className="font-medium">{item.value}%</span>
+                  <div className="space-y-3 mt-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-primary" />
+                        <span className="text-sm">Image Posts</span>
                       </div>
-                    ))}
+                      <div className="text-right">
+                        <p className="font-medium">{agentData.imageVsText.imagePosts}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agentData.imageVsText.imageEngagement.toFixed(1)}% avg
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Type className="w-4 h-4" />
+                        <span className="text-sm">Text Only</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">{agentData.imageVsText.textPosts}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {agentData.imageVsText.textEngagement.toFixed(1)}% avg
+                        </p>
+                      </div>
+                    </div>
+                    {agentData.imageVsText.imageEngagement > agentData.imageVsText.textEngagement && (
+                      <p className="text-xs text-center text-muted-foreground">
+                        Image posts perform {((agentData.imageVsText.imageEngagement / (agentData.imageVsText.textEngagement || 1)) * 100 - 100).toFixed(0)}% better
+                      </p>
+                    )}
                   </div>
                 </>
               ) : (
@@ -266,49 +344,8 @@ const Analytics = () => {
           </Card>
         </div>
 
-        {/* Tag Analytics Section */}
+        {/* Tag Analytics */}
         <TagAnalyticsChart data={tagAnalytics} />
-
-        {/* AI Model Performance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              AI Model Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {aiModelPerformance.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {aiModelPerformance.map((model, index) => (
-                  <div
-                    key={model.model}
-                    className="p-4 rounded-lg bg-muted/50 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium capitalize">{model.model}</p>
-                        <p className="text-sm text-muted-foreground">{model.postCount} posts</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{model.avgEngagementRate.toFixed(1)}%</p>
-                      <p className="text-xs text-muted-foreground">Avg. engagement</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>No AI model data yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Bottom Section */}
         <div className="grid lg:grid-cols-2 gap-6">
@@ -379,10 +416,6 @@ const Analytics = () => {
                           <MessageSquare className="w-4 h-4" />
                           {post.comments}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Share2 className="w-4 h-4" />
-                          {post.shares}
-                        </span>
                       </div>
                     </div>
                   ))}
@@ -392,7 +425,7 @@ const Analytics = () => {
                   <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-50" />
                   <p>No posted content yet</p>
                   <Button variant="link" asChild className="mt-2">
-                    <Link to="/app/create">Create your first post</Link>
+                    <Link to="/app/agents">Manage agents</Link>
                   </Button>
                 </div>
               )}
@@ -403,6 +436,79 @@ const Analytics = () => {
     </AppLayout>
   );
 };
+
+// Generate insights based on data
+interface Insight {
+  title: string;
+  description: string;
+  type: "positive" | "negative" | "info";
+}
+
+function generateInsights(data: NonNullable<ReturnType<typeof useAgentAnalytics>["data"]>): Insight[] {
+  const insights: Insight[] = [];
+
+  // Best performing agent
+  const sortedAgents = [...data.agents].sort((a, b) => b.avgEngagement - a.avgEngagement);
+  if (sortedAgents.length > 0 && sortedAgents[0].avgEngagement > 0) {
+    insights.push({
+      title: `${sortedAgents[0].name} is your top performer`,
+      description: `Averaging ${sortedAgents[0].avgEngagement.toFixed(1)}% engagement rate`,
+      type: "positive",
+    });
+  }
+
+  // Image vs text comparison
+  if (data.imageVsText.imagePosts > 0 && data.imageVsText.textPosts > 0) {
+    const diff = data.imageVsText.imageEngagement - data.imageVsText.textEngagement;
+    if (diff > 0) {
+      insights.push({
+        title: "Image posts outperform text",
+        description: `Image posts get ${diff.toFixed(1)}% more engagement on average`,
+        type: "positive",
+      });
+    } else if (diff < -1) {
+      insights.push({
+        title: "Text posts performing well",
+        description: "Your text-only content is resonating with your audience",
+        type: "info",
+      });
+    }
+  }
+
+  // Active agents
+  const activeCount = data.agents.filter((a) => a.status === "active").length;
+  const pausedCount = data.agents.filter((a) => a.status === "paused").length;
+  if (pausedCount > activeCount && pausedCount > 0) {
+    insights.push({
+      title: "Agents are paused",
+      description: `${pausedCount} of ${data.agents.length} agents are currently paused`,
+      type: "negative",
+    });
+  }
+
+  // Best tags
+  if (data.tagAnalytics.length > 0) {
+    const topTag = data.tagAnalytics[0];
+    if (topTag.avgEngagement > 0) {
+      insights.push({
+        title: `#${topTag.tag} is trending`,
+        description: `Your top performing tag with ${topTag.avgEngagement.toFixed(1)}% avg engagement`,
+        type: "positive",
+      });
+    }
+  }
+
+  // Posting consistency
+  if (data.totalScheduled > 0) {
+    insights.push({
+      title: `${data.totalScheduled} posts scheduled`,
+      description: "Your agents are planning ahead for consistent posting",
+      type: "info",
+    });
+  }
+
+  return insights.slice(0, 6);
+}
 
 // Loading State
 export const AnalyticsLoading = () => {
@@ -459,7 +565,7 @@ export const AnalyticsEmpty = () => {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold">Analytics</h1>
-          <p className="text-muted-foreground">Track your LinkedIn performance</p>
+          <p className="text-muted-foreground">Agent performance & insights</p>
         </div>
 
         <Card className="text-center py-16">
@@ -469,10 +575,13 @@ export const AnalyticsEmpty = () => {
             </div>
             <h2 className="text-2xl font-bold mb-2">No Data Yet</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              Start posting content to see your analytics. Create your first post to begin tracking performance.
+              Create an agent to start generating content. Analytics will appear once your agents create posts.
             </p>
-            <Button asChild>
-              <Link to="/app/create">Create Your First Post</Link>
+            <Button variant="hero" asChild>
+              <Link to="/app/agents/new">
+                <Sparkles className="w-4 h-4 mr-2" />
+                Create Your First Agent
+              </Link>
             </Button>
           </CardContent>
         </Card>
