@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PublicRoute from "@/components/auth/PublicRoute";
@@ -24,10 +24,8 @@ import Dashboard from "./pages/app/Dashboard";
 import Agents from "./pages/app/Agents";
 import CreateAgent from "./pages/app/CreateAgent";
 import AgentDetail from "./pages/app/AgentDetail";
-import CreatePost from "./pages/app/CreatePost";
 import ContentCalendar from "./pages/app/ContentCalendar";
 import Analytics from "./pages/app/Analytics";
-import TrainAI from "./pages/app/TrainAI";
 import LinkedInConnect from "./pages/app/LinkedInConnect";
 import Settings from "./pages/app/Settings";
 import Billing from "./pages/app/Billing";
@@ -70,13 +68,15 @@ const App = () => (
             <Route path="/app/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
             <Route path="/app/agents/new" element={<ProtectedRoute><CreateAgent /></ProtectedRoute>} />
             <Route path="/app/agents/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
-            <Route path="/app/create" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
             <Route path="/app/calendar" element={<ProtectedRoute><ContentCalendar /></ProtectedRoute>} />
             <Route path="/app/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-            <Route path="/app/train-ai" element={<ProtectedRoute><TrainAI /></ProtectedRoute>} />
             <Route path="/app/linkedin" element={<ProtectedRoute><LinkedInConnect /></ProtectedRoute>} />
             <Route path="/app/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/app/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+
+            {/* Redirects for removed features */}
+            <Route path="/app/create" element={<Navigate to="/app/agents/new" replace />} />
+            <Route path="/app/train-ai" element={<Navigate to="/app/agents" replace />} />
 
             {/* Admin Routes - Also protected */}
             <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

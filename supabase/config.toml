@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.run-agent]
 verify_jwt = false
+
+[functions.generate-sample-posts]
+verify_jwt = false

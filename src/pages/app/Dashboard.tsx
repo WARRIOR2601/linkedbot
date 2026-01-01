@@ -108,7 +108,7 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, {displayName}!</p>
           </div>
-          <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
             <Button variant="outline" asChild>
               <Link to="/app/calendar">
                 <Calendar className="w-4 h-4 mr-2" />
@@ -116,9 +116,9 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button variant="hero" asChild>
-              <Link to="/app/create">
+              <Link to="/app/agents/new">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Post
+                Create Agent
               </Link>
             </Button>
           </div>
@@ -284,9 +284,9 @@ const Dashboard = () => {
                 ))
               )}
               <Button variant="outline" className="w-full" asChild>
-                <Link to="/app/create">
+                <Link to="/app/agents/new">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  Generate New Post
+                  Create New Agent
                 </Link>
               </Button>
             </CardContent>
@@ -306,10 +306,10 @@ const Dashboard = () => {
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>No posts yet</p>
-                <Button variant="link" asChild>
-                  <Link to="/app/create">Create your first post</Link>
-                </Button>
-              </div>
+              <Button variant="link" asChild>
+                <Link to="/app/agents/new">Create your first agent</Link>
+              </Button>
+            </div>
             ) : (
               <div className="space-y-4">
                 {recentPosts.map((post) => (
