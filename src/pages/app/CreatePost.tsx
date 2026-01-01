@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleDialog } from "@/components/posts/ScheduleDialog";
+import PostImageUpload from "@/components/posts/PostImageUpload";
 import { 
   Briefcase, Users, Smile, BookOpen, Rocket, MessageCircle,
   Sparkles, Wand2, Save, Calendar, RefreshCw, Copy, Check,
@@ -46,6 +47,7 @@ const CreatePost = () => {
   
   const [generatedContent, setGeneratedContent] = useState("");
   const [generatedHashtags, setGeneratedHashtags] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -118,6 +120,7 @@ const CreatePost = () => {
         hashtags: generatedHashtags,
         post_length: postLength,
         guidance: guidance || null,
+        image_url: imageUrl,
         status: "draft",
         scheduled_at: null,
       });
@@ -147,6 +150,7 @@ const CreatePost = () => {
         hashtags: generatedHashtags,
         post_length: postLength,
         guidance: guidance || null,
+        image_url: imageUrl,
         status: "scheduled",
         scheduled_at: scheduledAt,
       });
@@ -288,6 +292,14 @@ const CreatePost = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Image Upload */}
+            <PostImageUpload
+              imageUrl={imageUrl}
+              onImageChange={setImageUrl}
+              postContent={generatedContent}
+              tags={selectedTags}
+            />
 
             <Button 
               onClick={generatePost} 
