@@ -1,8 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { useAnalytics, TimeRange } from "@/hooks/useAnalytics";
+import TagAnalyticsChart from "@/components/analytics/TagAnalyticsChart";
 import {
   TrendingUp,
   TrendingDown,
@@ -10,10 +14,12 @@ import {
   Heart,
   MessageSquare,
   Share2,
-  Users,
+  FileText,
   BarChart3,
   Clock,
   ArrowUpRight,
+  Sparkles,
+  Info,
 } from "lucide-react";
 import {
   AreaChart,
@@ -23,75 +29,60 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
 } from "recharts";
 
-// Mock data
-const overviewStats = [
-  { title: "Total Impressions", value: "128.5K", change: "+23.5%", trend: "up", icon: Eye },
-  { title: "Total Engagement", value: "8,456", change: "+18.2%", trend: "up", icon: Heart },
-  { title: "New Followers", value: "+342", change: "+12.8%", trend: "up", icon: Users },
-  { title: "Posts Published", value: "24", change: "-5.0%", trend: "down", icon: BarChart3 },
-];
-
-const engagementData = [
-  { name: "Jan 1", impressions: 4200, engagement: 320, followers: 15 },
-  { name: "Jan 5", impressions: 5100, engagement: 410, followers: 22 },
-  { name: "Jan 10", impressions: 4800, engagement: 380, followers: 18 },
-  { name: "Jan 15", impressions: 6200, engagement: 520, followers: 35 },
-  { name: "Jan 20", impressions: 7100, engagement: 610, followers: 42 },
-  { name: "Jan 25", impressions: 5800, engagement: 480, followers: 28 },
-  { name: "Jan 30", impressions: 8400, engagement: 720, followers: 55 },
-];
-
-const postTypeData = [
-  { name: "Thought Leadership", value: 35, color: "hsl(var(--primary))" },
-  { name: "How-To", value: 25, color: "hsl(var(--accent))" },
-  { name: "Personal Stories", value: 20, color: "hsl(var(--success))" },
-  { name: "Industry News", value: 15, color: "hsl(var(--warning))" },
-  { name: "Other", value: 5, color: "hsl(var(--muted))" },
-];
-
-const bestPostingTimes = [
-  { day: "Mon", time: "9:00 AM", engagement: 85 },
-  { day: "Tue", time: "2:00 PM", engagement: 92 },
-  { day: "Wed", time: "10:00 AM", engagement: 78 },
-  { day: "Thu", time: "11:00 AM", engagement: 88 },
-  { day: "Fri", time: "9:00 AM", engagement: 75 },
-];
-
-const topPosts = [
-  {
-    title: "5 AI Tools Every Marketer Needs",
-    impressions: "25.4K",
-    likes: 542,
-    comments: 89,
-    shares: 45,
-  },
-  {
-    title: "The Future of Remote Work",
-    impressions: "18.7K",
-    likes: 398,
-    comments: 67,
-    shares: 32,
-  },
-  {
-    title: "Leadership Lessons from My Mentor",
-    impressions: "15.2K",
-    likes: 312,
-    comments: 54,
-    shares: 28,
-  },
-];
-
 const Analytics = () => {
-  const [timeRange, setTimeRange] = useState("month");
+  const [timeRange, setTimeRange] = useState<TimeRange>("month");
+  const {
+    isLoading,
+    overviewStats,
+    engagementTrends,
+    tagAnalytics,
+    aiModelPerformance,
+    topPosts,
+    bestPostingTimes,
+    contentMix,
+    hasData,
+    hasPosts,
+  } = useAnalytics(timeRange);
+
+  if (isLoading) {
+    return <AnalyticsLoading />;
+  }
+
+  if (!hasData) {
+    return <AnalyticsEmpty />;
+  }
+
+  const statsCards = [
+    { 
+      title: "Total Posts", 
+      value: overviewStats.totalPosts.toString(), 
+      icon: FileText,
+      color: "text-primary"
+    },
+    { 
+      title: "Posted", 
+      value: overviewStats.postedPosts.toString(), 
+      icon: ArrowUpRight,
+      color: "text-success"
+    },
+    { 
+      title: "Scheduled", 
+      value: overviewStats.scheduledPosts.toString(), 
+      icon: Clock,
+      color: "text-warning"
+    },
+    { 
+      title: "Drafts", 
+      value: overviewStats.draftPosts.toString(), 
+      icon: BarChart3,
+      color: "text-muted-foreground"
+    },
+  ];
 
   return (
     <AppLayout>
@@ -104,7 +95,7 @@ const Analytics = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center rounded-lg border border-border overflow-hidden">
-              {["day", "week", "month", "year"].map((range) => (
+              {(["day", "week", "month", "year"] as TimeRange[]).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
@@ -121,26 +112,27 @@ const Analytics = () => {
           </div>
         </div>
 
+        {/* Info Banner */}
+        {!hasPosts && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center gap-3 p-4">
+              <Info className="w-5 h-5 text-primary shrink-0" />
+              <p className="text-sm">
+                <span className="font-medium">Engagement data will appear after your posts are published.</span>
+                {" "}Currently showing post statistics from your account.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {overviewStats.map((stat, index) => (
+          {statsCards.map((stat, index) => (
             <Card key={index}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div
-                    className={`flex items-center gap-1 text-sm ${
-                      stat.trend === "up" ? "text-success" : "text-destructive"
-                    }`}
-                  >
-                    {stat.trend === "up" ? (
-                      <TrendingUp className="w-4 h-4" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4" />
-                    )}
-                    {stat.change}
+                  <div className={`w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
                   </div>
                 </div>
                 <div className="mt-4">
@@ -157,101 +149,166 @@ const Analytics = () => {
           {/* Engagement Over Time */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-lg">Engagement Over Time</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Engagement Over Time
+                {!hasPosts && <Badge variant="secondary">Data pending</Badge>}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={engagementData}>
-                    <defs>
-                      <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="impressions"
-                      stroke="hsl(var(--primary))"
-                      fillOpacity={1}
-                      fill="url(#colorImpressions)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="engagement"
-                      stroke="hsl(var(--accent))"
-                      fillOpacity={1}
-                      fill="url(#colorEngagement)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {engagementTrends.length > 0 ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={engagementTrends}>
+                      <defs>
+                        <linearGradient id="colorImpressions" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="impressions"
+                        stroke="hsl(var(--primary))"
+                        fillOpacity={1}
+                        fill="url(#colorImpressions)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="likes"
+                        stroke="hsl(var(--accent))"
+                        fillOpacity={1}
+                        fill="url(#colorLikes)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  <div className="text-center">
+                    <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>No engagement data yet</p>
+                    <p className="text-sm">Data will appear after posts are published</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Post Type Breakdown */}
+          {/* Content Mix */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Content Mix</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={postTypeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {postTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-2 mt-4">
-                {postTypeData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span>{item.name}</span>
-                    </div>
-                    <span className="font-medium">{item.value}%</span>
+              {contentMix.length > 0 ? (
+                <>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={contentMix}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {contentMix.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-2 mt-4">
+                    {contentMix.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span>{item.name}</span>
+                        </div>
+                        <span className="font-medium">{item.value}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  <p>No posts yet</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Tag Analytics Section */}
+        <TagAnalyticsChart data={tagAnalytics} />
+
+        {/* AI Model Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              AI Model Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {aiModelPerformance.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiModelPerformance.map((model, index) => (
+                  <div
+                    key={model.model}
+                    className="p-4 rounded-lg bg-muted/50 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-medium capitalize">{model.model}</p>
+                        <p className="text-sm text-muted-foreground">{model.postCount} posts</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{model.avgEngagementRate.toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground">Avg. engagement</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No AI model data yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Bottom Section */}
         <div className="grid lg:grid-cols-2 gap-6">
@@ -264,23 +321,34 @@ const Analytics = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {bestPostingTimes.map((slot, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="w-12 text-sm font-medium">{slot.day}</div>
-                    <div className="w-20 text-sm text-muted-foreground">{slot.time}</div>
-                    <div className="flex-1">
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
-                          style={{ width: `${slot.engagement}%` }}
-                        />
+              {bestPostingTimes.length > 0 ? (
+                <div className="space-y-4">
+                  {bestPostingTimes.map((slot, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="w-12 text-sm font-medium">{slot.day}</div>
+                      <div className="w-20 text-sm text-muted-foreground">
+                        {slot.hour}:00
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                            style={{ width: `${Math.min(slot.avgEngagement * 10, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="w-16 text-right text-sm font-medium">
+                        {slot.postCount} posts
                       </div>
                     </div>
-                    <div className="w-12 text-right text-sm font-medium">{slot.engagement}%</div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p>Post more to see optimal times</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -293,31 +361,41 @@ const Analytics = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topPosts.map((post, index) => (
-                  <div key={index} className="p-4 rounded-lg bg-muted/50">
-                    <p className="font-medium mb-3">{post.title}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {post.impressions}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        {post.likes}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4" />
-                        {post.comments}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Share2 className="w-4 h-4" />
-                        {post.shares}
-                      </span>
+              {topPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {topPosts.map((post, index) => (
+                    <div key={post.id} className="p-4 rounded-lg bg-muted/50">
+                      <p className="font-medium mb-3 line-clamp-2">{post.content}</p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
+                          {post.impressions.toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-4 h-4" />
+                          {post.likes}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="w-4 h-4" />
+                          {post.comments}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Share2 className="w-4 h-4" />
+                          {post.shares}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p>No posted content yet</p>
+                  <Button variant="link" asChild className="mt-2">
+                    <Link to="/app/create">Create your first post</Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -391,9 +469,11 @@ export const AnalyticsEmpty = () => {
             </div>
             <h2 className="text-2xl font-bold mb-2">No Data Yet</h2>
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              Start posting content to see your analytics. Connect your LinkedIn account and create your first post to begin tracking performance.
+              Start posting content to see your analytics. Create your first post to begin tracking performance.
             </p>
-            <Button variant="hero">Create Your First Post</Button>
+            <Button asChild>
+              <Link to="/app/create">Create Your First Post</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

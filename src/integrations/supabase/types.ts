@@ -137,6 +137,56 @@ export type Database = {
         }
         Relationships: []
       }
+      post_analytics: {
+        Row: {
+          comments: number
+          created_at: string
+          engagement_rate: number
+          id: string
+          impressions: number
+          likes: number
+          post_id: string
+          recorded_at: string
+          shares: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comments?: number
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          impressions?: number
+          likes?: number
+          post_id: string
+          recorded_at?: string
+          shares?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comments?: number
+          created_at?: string
+          engagement_rate?: number
+          id?: string
+          impressions?: number
+          likes?: number
+          post_id?: string
+          recorded_at?: string
+          shares?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_analytics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           ai_model: string
@@ -146,6 +196,7 @@ export type Database = {
           guidance: string | null
           hashtags: string[] | null
           id: string
+          image_url: string | null
           linkedin_post_id: string | null
           post_length: string
           posted_at: string | null
@@ -164,6 +215,7 @@ export type Database = {
           guidance?: string | null
           hashtags?: string[] | null
           id?: string
+          image_url?: string | null
           linkedin_post_id?: string | null
           post_length?: string
           posted_at?: string | null
@@ -182,6 +234,7 @@ export type Database = {
           guidance?: string | null
           hashtags?: string[] | null
           id?: string
+          image_url?: string | null
           linkedin_post_id?: string | null
           post_length?: string
           posted_at?: string | null

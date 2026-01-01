@@ -13,6 +13,7 @@ export interface Post {
   hashtags: string[];
   post_length: string;
   guidance: string | null;
+  image_url: string | null;
   status: PostStatus;
   scheduled_at: string | null;
   posted_at: string | null;
