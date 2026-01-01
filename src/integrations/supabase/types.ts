@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_training_data: {
+        Row: {
+          agent_id: string
+          content: string
+          created_at: string
+          id: string
+          training_type: string
+          user_id: string
+        }
+        Insert: {
+          agent_id: string
+          content: string
+          created_at?: string
+          id?: string
+          training_type?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          training_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_training_data_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agents: {
+        Row: {
+          agent_type: string
+          created_at: string
+          id: string
+          last_post_at: string | null
+          name: string
+          posting_frequency: string
+          posting_goal: string | null
+          posts_created: number
+          preferred_posting_days: number[] | null
+          preferred_time_window_end: string | null
+          preferred_time_window_start: string | null
+          status: string
+          tone_of_voice: string | null
+          topics: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_type?: string
+          created_at?: string
+          id?: string
+          last_post_at?: string | null
+          name: string
+          posting_frequency?: string
+          posting_goal?: string | null
+          posts_created?: number
+          preferred_posting_days?: number[] | null
+          preferred_time_window_end?: string | null
+          preferred_time_window_start?: string | null
+          status?: string
+          tone_of_voice?: string | null
+          topics?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_type?: string
+          created_at?: string
+          id?: string
+          last_post_at?: string | null
+          name?: string
+          posting_frequency?: string
+          posting_goal?: string | null
+          posts_created?: number
+          preferred_posting_days?: number[] | null
+          preferred_time_window_end?: string | null
+          preferred_time_window_start?: string | null
+          status?: string
+          tone_of_voice?: string | null
+          topics?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_training_updates: {
         Row: {
           content: string
@@ -189,6 +281,7 @@ export type Database = {
       }
       posts: {
         Row: {
+          agent_id: string | null
           ai_model: string
           content: string
           created_at: string
@@ -208,6 +301,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agent_id?: string | null
           ai_model: string
           content: string
           created_at?: string
@@ -227,6 +321,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agent_id?: string | null
           ai_model?: string
           content?: string
           created_at?: string
@@ -245,7 +340,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       upcoming_events: {
         Row: {

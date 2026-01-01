@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   LogOut,
   Brain,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
+  { icon: Bot, label: "Agents", href: "/app/agents" },
   { icon: PenSquare, label: "Create Post", href: "/app/create" },
   { icon: Calendar, label: "Calendar", href: "/app/calendar" },
   { icon: BarChart3, label: "Analytics", href: "/app/analytics" },
