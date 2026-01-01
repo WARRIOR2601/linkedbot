@@ -1,7 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
-  PenSquare,
   Calendar,
   BarChart3,
   Linkedin,
@@ -9,8 +8,8 @@ import {
   CreditCard,
   ChevronLeft,
   LogOut,
-  Brain,
   Bot,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,10 +19,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/app/dashboard" },
   { icon: Bot, label: "Agents", href: "/app/agents" },
-  { icon: PenSquare, label: "Create Post", href: "/app/create" },
   { icon: Calendar, label: "Calendar", href: "/app/calendar" },
   { icon: BarChart3, label: "Analytics", href: "/app/analytics" },
-  { icon: Brain, label: "Train AI", href: "/app/train-ai" },
   { icon: Linkedin, label: "LinkedIn", href: "/app/linkedin" },
   { icon: Settings, label: "Settings", href: "/app/settings" },
   { icon: CreditCard, label: "Billing", href: "/app/billing" },
@@ -74,6 +71,18 @@ const AppSidebar = () => {
           className={cn("shrink-0", collapsed && "mx-auto")}
         >
           <ChevronLeft className={cn("w-4 h-4 transition-transform", collapsed && "rotate-180")} />
+        </Button>
+      </div>
+
+      {/* Create Agent Button */}
+      <div className="px-2 py-4 border-b border-sidebar-border">
+        <Button
+          variant="hero"
+          className={cn("w-full", collapsed && "px-2")}
+          onClick={() => navigate("/app/agents/new")}
+        >
+          <Plus className="w-4 h-4" />
+          {!collapsed && <span className="ml-2">Create Agent</span>}
         </Button>
       </div>
 

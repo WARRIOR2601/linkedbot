@@ -19,6 +19,14 @@ export interface Agent {
   posts_created: number;
   created_at: string;
   updated_at: string;
+  // New fields
+  about_user: string | null;
+  about_company: string | null;
+  target_audience: string | null;
+  sample_posts: string[] | null;
+  auto_generate_images: boolean;
+  allow_text_only_posts: boolean;
+  preferred_image_style: string | null;
 }
 
 export interface AgentTrainingData {
@@ -40,6 +48,13 @@ export interface CreateAgentInput {
   preferred_posting_days?: number[];
   preferred_time_window_start?: string;
   preferred_time_window_end?: string;
+  about_user?: string;
+  about_company?: string;
+  target_audience?: string;
+  sample_posts?: string[];
+  auto_generate_images?: boolean;
+  allow_text_only_posts?: boolean;
+  preferred_image_style?: string;
 }
 
 export interface AgentTrainingInput {
@@ -71,6 +86,14 @@ export const WEEKDAYS = [
   { id: 4, name: "Thursday" },
   { id: 5, name: "Friday" },
   { id: 6, name: "Saturday" },
+];
+
+export const IMAGE_STYLES = [
+  { id: "professional", name: "Professional", description: "Clean, corporate imagery" },
+  { id: "creative", name: "Creative", description: "Artistic and eye-catching" },
+  { id: "minimal", name: "Minimal", description: "Simple, text-focused visuals" },
+  { id: "vibrant", name: "Vibrant", description: "Colorful and energetic" },
+  { id: "tech", name: "Tech/Modern", description: "Futuristic, technology-focused" },
 ];
 
 export function useAgents() {

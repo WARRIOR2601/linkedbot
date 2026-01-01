@@ -51,7 +51,11 @@ export type Database = {
       }
       agents: {
         Row: {
+          about_company: string | null
+          about_user: string | null
           agent_type: string
+          allow_text_only_posts: boolean | null
+          auto_generate_images: boolean | null
           created_at: string
           id: string
           last_post_at: string | null
@@ -59,17 +63,24 @@ export type Database = {
           posting_frequency: string
           posting_goal: string | null
           posts_created: number
+          preferred_image_style: string | null
           preferred_posting_days: number[] | null
           preferred_time_window_end: string | null
           preferred_time_window_start: string | null
+          sample_posts: string[] | null
           status: string
+          target_audience: string | null
           tone_of_voice: string | null
           topics: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          about_company?: string | null
+          about_user?: string | null
           agent_type?: string
+          allow_text_only_posts?: boolean | null
+          auto_generate_images?: boolean | null
           created_at?: string
           id?: string
           last_post_at?: string | null
@@ -77,17 +88,24 @@ export type Database = {
           posting_frequency?: string
           posting_goal?: string | null
           posts_created?: number
+          preferred_image_style?: string | null
           preferred_posting_days?: number[] | null
           preferred_time_window_end?: string | null
           preferred_time_window_start?: string | null
+          sample_posts?: string[] | null
           status?: string
+          target_audience?: string | null
           tone_of_voice?: string | null
           topics?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          about_company?: string | null
+          about_user?: string | null
           agent_type?: string
+          allow_text_only_posts?: boolean | null
+          auto_generate_images?: boolean | null
           created_at?: string
           id?: string
           last_post_at?: string | null
@@ -95,10 +113,13 @@ export type Database = {
           posting_frequency?: string
           posting_goal?: string | null
           posts_created?: number
+          preferred_image_style?: string | null
           preferred_posting_days?: number[] | null
           preferred_time_window_end?: string | null
           preferred_time_window_start?: string | null
+          sample_posts?: string[] | null
           status?: string
+          target_audience?: string | null
           tone_of_voice?: string | null
           topics?: string[] | null
           updated_at?: string
