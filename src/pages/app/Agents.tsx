@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { useAgents, AGENT_TYPES, Agent, AgentStatus, getStatusColor, getStatusLabel } from "@/hooks/useAgents";
+import { useSubscription } from "@/hooks/useSubscription";
 import {
   Bot,
   Plus,
@@ -16,6 +18,8 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle,
+  Crown,
+  Zap,
 } from "lucide-react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import {
@@ -32,6 +36,7 @@ import {
 
 const Agents = () => {
   const { agents, isLoading, toggleAgentStatus, deleteAgent, activateAgent } = useAgents();
+  const { subscription, canCreateAgent, isLoading: subLoading } = useSubscription();
 
   const getAgentTypeName = (type: string) => {
     return AGENT_TYPES.find((t) => t.id === type)?.name || type;
@@ -69,13 +74,55 @@ const Agents = () => {
               Your autonomous posting assistants
             </p>
           </div>
-          <Button variant="hero" asChild>
-            <Link to="/app/agents/new">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Agent
-            </Link>
-          </Button>
+          {canCreateAgent(agents.length) ? (
+            <Button variant="hero" asChild>
+              <Link to="/app/agents/new">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Agent
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="hero" asChild>
+              <Link to="/app/billing">
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Create More
+              </Link>
+            </Button>
+          )}
         </div>
+
+        {/* Agent Slots Progress */}
+        <Card className="border-muted">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium">Agent Slots</p>
+                    <p className="text-sm text-muted-foreground">
+                      {agents.length} / {subscription?.max_agents || 1} used
+                    </p>
+                  </div>
+                  <Progress 
+                    value={(agents.length / (subscription?.max_agents || 1)) * 100} 
+                    className="h-2"
+                  />
+                </div>
+              </div>
+              {agents.length >= (subscription?.max_agents || 1) && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/app/billing">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Upgrade
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Agents Grid */}
         {agents.length === 0 ? (

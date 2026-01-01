@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAgents, AGENT_TYPES, POSTING_FREQUENCIES, WEEKDAYS, IMAGE_STYLES, CreateAgentInput } from "@/hooks/useAgents";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -42,7 +43,8 @@ const TOTAL_STEPS = 7;
 
 const CreateAgent = () => {
   const navigate = useNavigate();
-  const { createAgent } = useAgents();
+  const { createAgent, agents } = useAgents();
+  const { subscription, canCreateAgent, isLoading: subLoading } = useSubscription();
 
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<CreateAgentInput>({
@@ -198,6 +200,38 @@ const CreateAgent = () => {
   };
 
   const StepIcon = getStepIcon();
+
+  // Check if user can create more agents
+  if (!subLoading && !canCreateAgent(agents.length)) {
+    return (
+      <AppLayout>
+        <div className="max-w-lg mx-auto py-12">
+          <Card className="text-center">
+            <CardContent className="p-8 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center mx-auto">
+                <Bot className="w-8 h-8 text-warning" />
+              </div>
+              <h2 className="text-xl font-bold">Agent Limit Reached</h2>
+              <p className="text-muted-foreground">
+                You've used all {subscription?.max_agents || 1} agent slot{(subscription?.max_agents || 1) > 1 ? "s" : ""} on your {subscription?.plan || "free"} plan.
+                Upgrade to create more agents and unlock additional features.
+              </p>
+              <div className="flex gap-3 justify-center pt-4">
+                <Button variant="outline" onClick={() => navigate("/app/agents")}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Agents
+                </Button>
+                <Button onClick={() => navigate("/app/billing")}>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Upgrade Plan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>

@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { usePosts } from "@/hooks/usePosts";
 import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
@@ -22,6 +24,8 @@ import {
   Play,
   Pause,
   AlertTriangle,
+  Crown,
+  Zap,
 } from "lucide-react";
 import {
   AreaChart,
@@ -37,8 +41,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { posts, isLoading: postsLoading } = usePosts();
   const { agents, isLoading: agentsLoading, toggleAgentStatus } = useAgents();
+  const { subscription, isLoading: subLoading, planDetails, isTrialActive, trialDaysRemaining, canCreateAgent } = useSubscription();
 
-  const isLoading = postsLoading || agentsLoading;
+  const isLoading = postsLoading || agentsLoading || subLoading;
 
   // Calculate stats from real post data
   const stats = useMemo(() => {
@@ -127,14 +132,80 @@ const Dashboard = () => {
                 View Calendar
               </Link>
             </Button>
-            <Button variant="hero" asChild>
-              <Link to="/app/agents/new">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Agent
-              </Link>
-            </Button>
+            {canCreateAgent(agents.length) ? (
+              <Button variant="hero" asChild>
+                <Link to="/app/agents/new">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Agent
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="hero" asChild>
+                <Link to="/app/billing">
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade Plan
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Trial/Subscription Banner */}
+        {isTrialActive && (
+          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Pro Trial Active</p>
+                    <p className="text-sm text-muted-foreground">
+                      {trialDaysRemaining} days remaining • All features unlocked
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/app/billing">View Plans</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Agent Slots Card */}
+        <Card className="border-muted">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium">Agent Slots</p>
+                    <p className="text-sm text-muted-foreground">
+                      {agents.length} / {subscription?.max_agents || 1}
+                    </p>
+                  </div>
+                  <Progress 
+                    value={(agents.length / (subscription?.max_agents || 1)) * 100} 
+                    className="h-2" 
+                  />
+                </div>
+              </div>
+              {agents.length >= (subscription?.max_agents || 1) && (
+                <Button variant="outline" size="sm" className="ml-4" asChild>
+                  <Link to="/app/billing">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Upgrade
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

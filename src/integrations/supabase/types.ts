@@ -425,6 +425,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_subscriptions: {
+        Row: {
+          advanced_analytics_enabled: boolean
+          autonomous_posting_enabled: boolean
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          image_generation_enabled: boolean
+          max_agents: number
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          priority_execution: boolean
+          show_branding: boolean
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advanced_analytics_enabled?: boolean
+          autonomous_posting_enabled?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          image_generation_enabled?: boolean
+          max_agents?: number
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          priority_execution?: boolean
+          show_branding?: boolean
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advanced_analytics_enabled?: boolean
+          autonomous_posting_enabled?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          image_generation_enabled?: boolean
+          max_agents?: number
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          priority_execution?: boolean
+          show_branding?: boolean
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -440,6 +497,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      subscription_plan: "free" | "pro" | "business"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -568,6 +626,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      subscription_plan: ["free", "pro", "business"],
     },
   },
 } as const
