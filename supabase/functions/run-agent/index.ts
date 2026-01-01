@@ -64,48 +64,80 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Get all running agents that need to post
+    // Get all ACTIVE agents (not draft, not paused, not error)
     const { data: agents, error: agentsError } = await supabase
       .from("agents")
       .select("*")
-      .eq("status", "running");
+      .eq("status", "active");
 
     if (agentsError) {
       console.error("Error fetching agents:", agentsError);
       throw agentsError;
     }
 
-    console.log(`Found ${agents?.length || 0} running agents`);
+    console.log(`Found ${agents?.length || 0} active agents`);
 
-    const results: { agentId: string; success: boolean; error?: string }[] = [];
+    const results: { agentId: string; agentName: string; success: boolean; error?: string; postId?: string }[] = [];
     const now = new Date();
     const currentDay = now.getDay(); // 0-6
     const currentTime = now.toTimeString().slice(0, 5); // HH:MM
 
     for (const agent of agents || []) {
       try {
+        console.log(`Processing agent: ${agent.id} - ${agent.name}`);
+
         // Check if today is a posting day
-        if (!agent.preferred_posting_days?.includes(currentDay)) {
-          console.log(`Agent ${agent.id} - not a posting day`);
+        if (agent.preferred_posting_days && !agent.preferred_posting_days.includes(currentDay)) {
+          console.log(`Agent ${agent.id} - not a posting day (today: ${currentDay}, preferred: ${agent.preferred_posting_days})`);
           continue;
         }
 
         // Check if within time window
-        if (currentTime < agent.preferred_time_window_start || currentTime > agent.preferred_time_window_end) {
-          console.log(`Agent ${agent.id} - outside time window`);
-          continue;
-        }
-
-        // Check if already posted today
-        if (agent.last_post_at) {
-          const lastPost = new Date(agent.last_post_at);
-          if (lastPost.toDateString() === now.toDateString()) {
-            console.log(`Agent ${agent.id} - already posted today`);
+        if (agent.preferred_time_window_start && agent.preferred_time_window_end) {
+          if (currentTime < agent.preferred_time_window_start || currentTime > agent.preferred_time_window_end) {
+            console.log(`Agent ${agent.id} - outside time window (now: ${currentTime}, window: ${agent.preferred_time_window_start}-${agent.preferred_time_window_end})`);
             continue;
           }
         }
 
-        console.log(`Processing agent: ${agent.id} - ${agent.name}`);
+        // Check posting frequency to prevent duplicates
+        if (agent.last_post_at) {
+          const lastPost = new Date(agent.last_post_at);
+          const hoursSinceLastPost = (now.getTime() - lastPost.getTime()) / (1000 * 60 * 60);
+          
+          // Daily: at least 20 hours between posts
+          if (agent.posting_frequency === "daily" && hoursSinceLastPost < 20) {
+            console.log(`Agent ${agent.id} - already posted recently (${hoursSinceLastPost.toFixed(1)}h ago)`);
+            continue;
+          }
+          
+          // Weekly: at least 5 days between posts
+          if (agent.posting_frequency === "weekly" && hoursSinceLastPost < 120) {
+            console.log(`Agent ${agent.id} - weekly limit not reached`);
+            continue;
+          }
+        }
+
+        // Check if there's a user-uploaded image for today
+        const todayStart = new Date(now);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(now);
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const { data: existingPost } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("agent_id", agent.id)
+          .gte("scheduled_at", todayStart.toISOString())
+          .lte("scheduled_at", todayEnd.toISOString())
+          .single();
+
+        let userProvidedImageUrl: string | null = null;
+        if (existingPost?.image_url && existingPost.status === "draft") {
+          // User uploaded an image for this date - use it
+          userProvidedImageUrl = existingPost.image_url;
+          console.log(`Agent ${agent.id} - using user-provided image`);
+        }
 
         // Fetch agent training data
         const { data: trainingData } = await supabase
@@ -121,36 +153,56 @@ serve(async (req) => {
           .eq("user_id", agent.user_id)
           .single();
 
-        // Build context
-        let profileContext = "";
+        // Build context from agent fields and training data
+        let authorContext = "";
+        if (agent.about_user) {
+          authorContext += `\nAbout the Author: ${agent.about_user}`;
+        }
+        if (agent.about_company) {
+          authorContext += `\nAbout the Company: ${agent.about_company}`;
+        }
+        if (agent.target_audience) {
+          authorContext += `\nTarget Audience: ${agent.target_audience}`;
+        }
         if (profile) {
-          profileContext = `
-AUTHOR CONTEXT:
-- Business Name: ${profile.business_name || "Not specified"}
-- Industry: ${profile.industry || "Not specified"}
-- Business Description: ${profile.description || "Not specified"}
-- Target Audience: ${profile.target_audience || "Not specified"}
-`;
+          authorContext += `
+Business Name: ${profile.business_name || "Not specified"}
+Industry: ${profile.industry || "Not specified"}
+Business Description: ${profile.description || "Not specified"}`;
         }
 
         let trainingContext = "";
         if (trainingData && trainingData.length > 0) {
-          trainingContext = "\n\nAGENT TRAINING DATA:\n" +
+          trainingContext = "\n\nTRAINING DATA & WRITING SAMPLES:\n" +
             trainingData.map((t: any) => `[${t.training_type}]: ${t.content}`).join("\n\n");
+        }
+
+        // Add sample posts from agent config if available
+        if (agent.sample_posts && agent.sample_posts.length > 0) {
+          trainingContext += "\n\nSAMPLE POSTS (match this style):\n" +
+            agent.sample_posts.map((p: string, i: number) => `Sample ${i + 1}: ${p}`).join("\n\n");
         }
 
         const modelConfig = AI_MODELS[agent.agent_type] || AI_MODELS.professional;
 
+        // Build image context if user provided an image
+        let imageInstructions = "";
+        if (userProvidedImageUrl) {
+          imageInstructions = `\n\nIMPORTANT: The user has provided a specific image for today's post. Write content that relates to or complements this image.`;
+        }
+
         const systemPrompt = `${modelConfig.systemPrompt}
 
-${profileContext}
+AUTHOR CONTEXT:
+${authorContext}
 ${trainingContext}
 
 AGENT CONFIGURATION:
 - Agent Name: ${agent.name}
-- Posting Goal: ${agent.posting_goal || "Not specified"}
+- Posting Goal: ${agent.posting_goal || "Build personal brand and engage audience"}
 - Tone of Voice: ${agent.tone_of_voice || "Match the style from training data"}
 - Topics to cover: ${agent.topics?.join(", ") || "General professional topics"}
+${imageInstructions}
 
 OUTPUT FORMAT:
 Write a LinkedIn post that feels authentic and personal. 
@@ -171,7 +223,10 @@ Keep emojis minimal and professional (0-3 max).`;
             model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt },
-              { role: "user", content: "Generate a LinkedIn post based on the provided context. Create something fresh and engaging." }
+              { role: "user", content: userProvidedImageUrl 
+                ? "Generate a LinkedIn post that complements the image the user uploaded. Create something engaging and relevant." 
+                : "Generate a LinkedIn post based on the provided context. Create something fresh and engaging that matches the author's style."
+              }
             ],
           }),
         });
@@ -179,7 +234,11 @@ Keep emojis minimal and professional (0-3 max).`;
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
           console.error(`AI error for agent ${agent.id}:`, aiResponse.status, errorText);
-          results.push({ agentId: agent.id, success: false, error: "AI generation failed" });
+          
+          // Set agent to error status
+          await supabase.from("agents").update({ status: "error" }).eq("id", agent.id);
+          
+          results.push({ agentId: agent.id, agentName: agent.name, success: false, error: "AI generation failed" });
           continue;
         }
 
@@ -199,69 +258,97 @@ Keep emojis minimal and professional (0-3 max).`;
             .filter((h: string) => h.length > 0);
         }
 
-        // Generate image based on content
-        let imageUrl = null;
-        try {
-          console.log(`Generating image for agent ${agent.id}...`);
-          const imagePrompt = `Create a professional LinkedIn post image that matches this content: "${postContent.slice(0, 200)}". 
-Style: Clean, professional, suitable for business networking. 
+        // Generate image if enabled and no user image provided
+        let imageUrl = userProvidedImageUrl;
+        if (!imageUrl && agent.auto_generate_images) {
+          try {
+            console.log(`Generating image for agent ${agent.id}...`);
+            const imagePrompt = `Create a professional LinkedIn post image that matches this content: "${postContent.slice(0, 200)}". 
+Style: ${agent.preferred_image_style || "Clean, professional, suitable for business networking"}. 
 Dimensions: LinkedIn post format, 1200x627 aspect ratio.`;
 
-          const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-image-preview",
-              messages: [{ role: "user", content: imagePrompt }],
-              modalities: ["image", "text"]
-            }),
-          });
+            const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash-image-preview",
+                messages: [{ role: "user", content: imagePrompt }],
+                modalities: ["image", "text"]
+              }),
+            });
 
-          if (imageResponse.ok) {
-            const imageData = await imageResponse.json();
-            imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-            console.log(`Image generated for agent ${agent.id}`);
+            if (imageResponse.ok) {
+              const imageData = await imageResponse.json();
+              imageUrl = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+              console.log(`Image generated for agent ${agent.id}`);
+            }
+          } catch (imgError) {
+            console.error(`Image generation failed for agent ${agent.id}:`, imgError);
+            // Continue without image if allowed
+            if (!agent.allow_text_only_posts) {
+              console.log(`Agent ${agent.id} requires images - skipping post`);
+              continue;
+            }
           }
-        } catch (imgError) {
-          console.error(`Image generation failed for agent ${agent.id}:`, imgError);
-          // Continue without image
         }
 
-        // Calculate schedule time (random time within the remaining window today or tomorrow)
+        // If no image and text-only not allowed, skip
+        if (!imageUrl && !agent.allow_text_only_posts) {
+          console.log(`Agent ${agent.id} - no image available and text-only not allowed`);
+          continue;
+        }
+
+        // Calculate schedule time within the preferred window
         const scheduleTime = new Date();
-        scheduleTime.setHours(
-          parseInt(agent.preferred_time_window_start.split(":")[0]) + 
-          Math.floor(Math.random() * 2),
-          Math.floor(Math.random() * 60),
-          0,
-          0
-        );
+        const startHour = parseInt(agent.preferred_time_window_start?.split(":")[0] || "9");
+        const endHour = parseInt(agent.preferred_time_window_end?.split(":")[0] || "17");
+        const randomHour = startHour + Math.floor(Math.random() * (endHour - startHour));
+        const randomMinute = Math.floor(Math.random() * 60);
+
+        scheduleTime.setHours(randomHour, randomMinute, 0, 0);
 
         // If schedule time is in the past, schedule for tomorrow
         if (scheduleTime <= now) {
           scheduleTime.setDate(scheduleTime.getDate() + 1);
         }
 
-        // Save post
-        const { error: postError } = await supabase.from("posts").insert({
-          user_id: agent.user_id,
-          agent_id: agent.id,
-          content: postContent,
-          hashtags,
-          image_url: imageUrl,
-          tags: agent.topics || [],
-          ai_model: agent.agent_type,
-          post_length: "medium",
-          status: "scheduled",
-          scheduled_at: scheduleTime.toISOString(),
-        });
+        // Update existing draft post or create new one
+        let postResult;
+        if (existingPost?.status === "draft") {
+          postResult = await supabase
+            .from("posts")
+            .update({
+              content: postContent,
+              hashtags,
+              image_url: imageUrl,
+              status: "scheduled",
+              scheduled_at: scheduleTime.toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingPost.id)
+            .select()
+            .single();
+        } else {
+          postResult = await supabase.from("posts").insert({
+            user_id: agent.user_id,
+            agent_id: agent.id,
+            content: postContent,
+            hashtags,
+            image_url: imageUrl,
+            tags: agent.topics || [],
+            ai_model: agent.agent_type,
+            post_length: "medium",
+            status: "scheduled",
+            scheduled_at: scheduleTime.toISOString(),
+          }).select().single();
+        }
 
-        if (postError) {
-          console.error(`Error saving post for agent ${agent.id}:`, postError);
-          results.push({ agentId: agent.id, success: false, error: "Failed to save post" });
+        if (postResult.error) {
+          console.error(`Error saving post for agent ${agent.id}:`, postResult.error);
+          results.push({ agentId: agent.id, agentName: agent.name, success: false, error: "Failed to save post" });
           continue;
         }
 
@@ -275,22 +362,30 @@ Dimensions: LinkedIn post format, 1200x627 aspect ratio.`;
           .eq("id", agent.id);
 
         console.log(`Successfully created post for agent ${agent.id}`);
-        results.push({ agentId: agent.id, success: true });
+        results.push({ agentId: agent.id, agentName: agent.name, success: true, postId: postResult.data?.id });
       } catch (agentError) {
         console.error(`Error processing agent ${agent.id}:`, agentError);
+        
+        // Set agent to error status
+        await supabase.from("agents").update({ status: "error" }).eq("id", agent.id);
+        
         results.push({
           agentId: agent.id,
+          agentName: agent.name,
           success: false,
           error: agentError instanceof Error ? agentError.message : "Unknown error",
         });
       }
     }
 
+    console.log(`Agent run complete. Processed: ${results.length}, Successful: ${results.filter(r => r.success).length}`);
+
     return new Response(
       JSON.stringify({
         processed: results.length,
         successful: results.filter((r) => r.success).length,
         results,
+        timestamp: now.toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
