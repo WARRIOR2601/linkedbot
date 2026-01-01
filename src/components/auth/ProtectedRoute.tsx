@@ -16,6 +16,7 @@ interface DiagnosticsState {
   onboardingComplete: boolean | null;
   currentRoute: string;
   lastRedirectReason: string | null;
+  lastError: string | null;
 }
 
 export const useDiagnostics = () => {
@@ -26,6 +27,7 @@ export const useDiagnostics = () => {
     onboardingComplete: null,
     currentRoute: "/",
     lastRedirectReason: null,
+    lastError: null,
   });
 
   const updateDiagnostics = (updates: Partial<DiagnosticsState>) => {
@@ -43,6 +45,7 @@ let globalDiagnostics: DiagnosticsState = {
   onboardingComplete: null,
   currentRoute: "/",
   lastRedirectReason: null,
+  lastError: null,
 };
 
 export const getGlobalDiagnostics = () => globalDiagnostics;
@@ -52,7 +55,7 @@ export const setGlobalDiagnostics = (updates: Partial<DiagnosticsState>) => {
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, isLoading: authLoading, loginMethod } = useAuth();
-  const { isComplete, isLoading: onboardingLoading } = useOnboarding();
+  const { profile, isComplete, isLoading: onboardingLoading } = useOnboarding();
   const location = useLocation();
 
   // Update global diagnostics
@@ -89,14 +92,20 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Rule 2: Authenticated but onboarding not complete → redirect to /onboarding
+  // Rule 2: Authenticated but account suspended → show Account Disabled
+  if (profile?.account_status === "suspended") {
+    setGlobalDiagnostics({ lastRedirectReason: "Account suspended" });
+    return <Navigate to="/account-disabled" replace />;
+  }
+
+  // Rule 3: Authenticated but onboarding not complete → redirect to /onboarding
   // Exception: Allow access to /onboarding itself
   if (!isComplete && location.pathname !== "/onboarding") {
     setGlobalDiagnostics({ lastRedirectReason: "Onboarding not complete" });
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Rule 3: Authenticated and onboarding complete, but on /onboarding → redirect to dashboard
+  // Rule 4: Authenticated and onboarding complete, but on /onboarding → redirect to dashboard
   if (isComplete && location.pathname === "/onboarding") {
     setGlobalDiagnostics({ lastRedirectReason: "Onboarding already complete" });
     return <Navigate to="/app/dashboard" replace />;

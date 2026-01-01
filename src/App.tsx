@@ -16,6 +16,7 @@ import Signup from "./pages/Signup";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Onboarding from "./pages/Onboarding";
+import AccountDisabled from "./pages/AccountDisabled";
 import NotFound from "./pages/NotFound";
 
 // App Pages
@@ -53,6 +54,9 @@ const App = () => (
             {/* Auth Routes - Redirect if already logged in */}
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+
+            {/* Account Disabled - Accessible only when suspended */}
+            <Route path="/account-disabled" element={<AccountDisabled />} />
 
             {/* Onboarding - Protected but with special handling */}
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />

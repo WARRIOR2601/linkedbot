@@ -13,6 +13,7 @@ export interface OnboardingProfile {
   tone_of_voice: string | null;
   posting_frequency: string | null;
   is_complete: boolean;
+  account_status: string;
   created_at: string;
   updated_at: string;
 }
