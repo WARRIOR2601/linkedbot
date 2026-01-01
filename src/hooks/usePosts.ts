@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+export type PostStatus = "draft" | "scheduled" | "posted" | "failed";
+
 export interface Post {
   id: string;
   user_id: string;
@@ -11,8 +13,12 @@ export interface Post {
   hashtags: string[];
   post_length: string;
   guidance: string | null;
-  status: "draft" | "scheduled";
+  status: PostStatus;
   scheduled_at: string | null;
+  posted_at: string | null;
+  linkedin_post_id: string | null;
+  error_message: string | null;
+  retry_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +58,7 @@ export const usePosts = () => {
     fetchPosts();
   }, [user]);
 
-  const createPost = async (postData: Omit<Post, "id" | "user_id" | "created_at" | "updated_at">) => {
+  const createPost = async (postData: Omit<Post, "id" | "user_id" | "created_at" | "updated_at" | "posted_at" | "linkedin_post_id" | "error_message" | "retry_count">) => {
     if (!user) return { error: "No user logged in" };
 
     try {
@@ -114,6 +120,32 @@ export const usePosts = () => {
     }
   };
 
+  const retryPost = async (id: string) => {
+    if (!user) return { error: "No user logged in" };
+
+    try {
+      // Reset the post to scheduled status for retry
+      const { data, error } = await supabase
+        .from("posts")
+        .update({
+          status: "scheduled",
+          error_message: null,
+          retry_count: 0,
+        })
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setPosts((prev) => prev.map((p) => (p.id === id ? (data as Post) : p)));
+      return { data, error: null };
+    } catch (err: any) {
+      console.error("Error retrying post:", err);
+      return { data: null, error: err.message };
+    }
+  };
+
   return {
     posts,
     isLoading,
@@ -121,6 +153,7 @@ export const usePosts = () => {
     createPost,
     updatePost,
     deletePost,
+    retryPost,
     refetch: fetchPosts,
   };
 };

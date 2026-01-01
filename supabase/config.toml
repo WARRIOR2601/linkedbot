@@ -2,3 +2,9 @@ project_id = "hqtqujfzruzipofombkk"
 
 [functions.generate-post]
 verify_jwt = false
+
+[functions.post-to-linkedin]
+verify_jwt = true
+
+[functions.process-scheduled-posts]
+verify_jwt = false

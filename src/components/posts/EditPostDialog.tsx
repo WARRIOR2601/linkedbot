@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { AI_MODELS } from "@/lib/ai-models";
-import { Post } from "@/hooks/usePosts";
+import { Post, PostStatus } from "@/hooks/usePosts";
 
 interface EditPostDialogProps {
   post: Post | null;
@@ -36,6 +36,7 @@ interface EditPostDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: Partial<Post>) => Promise<{ error: string | null }>;
   onDelete: (id: string) => Promise<{ error: string | null }>;
+  onRetry?: (id: string) => Promise<{ error: string | null }>;
 }
 
 const TIME_SLOTS = [
@@ -53,6 +54,7 @@ export function EditPostDialog({
   onOpenChange,
   onSave,
   onDelete,
+  onRetry,
 }: EditPostDialogProps) {
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<"draft" | "scheduled">("draft");
@@ -60,11 +62,14 @@ export function EditPostDialog({
   const [selectedTime, setSelectedTime] = useState("09:00");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     if (post) {
       setContent(post.content);
-      setStatus(post.status);
+      // For posted/failed posts, default to draft when editing
+      const editableStatus = post.status === "posted" || post.status === "failed" ? "draft" : post.status;
+      setStatus(editableStatus);
       if (post.scheduled_at) {
         const date = new Date(post.scheduled_at);
         setSelectedDate(date);
@@ -256,36 +261,71 @@ export function EditPostDialog({
               Please select a time in the future.
             </p>
           )}
+
+          {/* Show error message for failed posts */}
+          {post?.status === "failed" && post.error_message && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm">
+              <p className="font-medium text-destructive">Last error:</p>
+              <p className="text-muted-foreground">{post.error_message}</p>
+            </div>
+          )}
+
+          {/* Show posted info */}
+          {post?.status === "posted" && post.posted_at && (
+            <div className="p-3 rounded-lg bg-success/10 border border-success/30 text-sm">
+              <p className="font-medium text-success">Posted successfully</p>
+              <p className="text-muted-foreground">
+                {format(new Date(post.posted_at), "MMM d, yyyy 'at' h:mm a")}
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={isDeleting || isSaving}
+            disabled={isDeleting || isSaving || isRetrying}
             className="sm:mr-auto"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             {isDeleting ? "Deleting..." : "Delete"}
           </Button>
           
-          {post?.status === "scheduled" && (
+          {post?.status === "failed" && onRetry && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                setIsRetrying(true);
+                await onRetry(post.id);
+                setIsRetrying(false);
+                onOpenChange(false);
+              }}
+              disabled={isSaving || isDeleting || isRetrying}
+            >
+              {isRetrying ? "Retrying..." : "Retry Post"}
+            </Button>
+          )}
+          
+          {(post?.status === "scheduled" || post?.status === "failed") && (
             <Button
               variant="outline"
               onClick={handleRevertToDraft}
-              disabled={isSaving || isDeleting}
+              disabled={isSaving || isDeleting || isRetrying}
             >
               Revert to Draft
             </Button>
           )}
           
-          <Button
-            onClick={handleSave}
-            disabled={!isValidSchedule() || isSaving || isDeleting || !content.trim()}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
+          {post?.status !== "posted" && (
+            <Button
+              onClick={handleSave}
+              disabled={!isValidSchedule() || isSaving || isDeleting || isRetrying || !content.trim()}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
