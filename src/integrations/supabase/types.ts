@@ -86,15 +86,70 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_accounts: {
+        Row: {
+          access_token_encrypted: string | null
+          connected_at: string | null
+          created_at: string
+          followers_count: number | null
+          headline: string | null
+          id: string
+          is_connected: boolean
+          linkedin_user_id: string | null
+          profile_name: string | null
+          profile_photo_url: string | null
+          refresh_token_encrypted: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          connected_at?: string | null
+          created_at?: string
+          followers_count?: number | null
+          headline?: string | null
+          id?: string
+          is_connected?: boolean
+          linkedin_user_id?: string | null
+          profile_name?: string | null
+          profile_photo_url?: string | null
+          refresh_token_encrypted?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          connected_at?: string | null
+          created_at?: string
+          followers_count?: number | null
+          headline?: string | null
+          id?: string
+          is_connected?: boolean
+          linkedin_user_id?: string | null
+          profile_name?: string | null
+          profile_photo_url?: string | null
+          refresh_token_encrypted?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           ai_model: string
           content: string
           created_at: string
+          error_message: string | null
           guidance: string | null
           hashtags: string[] | null
           id: string
+          linkedin_post_id: string | null
           post_length: string
+          posted_at: string | null
+          retry_count: number
           scheduled_at: string | null
           status: string
           tags: string[] | null
@@ -105,10 +160,14 @@ export type Database = {
           ai_model: string
           content: string
           created_at?: string
+          error_message?: string | null
           guidance?: string | null
           hashtags?: string[] | null
           id?: string
+          linkedin_post_id?: string | null
           post_length?: string
+          posted_at?: string | null
+          retry_count?: number
           scheduled_at?: string | null
           status?: string
           tags?: string[] | null
@@ -119,10 +178,14 @@ export type Database = {
           ai_model?: string
           content?: string
           created_at?: string
+          error_message?: string | null
           guidance?: string | null
           hashtags?: string[] | null
           id?: string
+          linkedin_post_id?: string | null
           post_length?: string
+          posted_at?: string | null
+          retry_count?: number
           scheduled_at?: string | null
           status?: string
           tags?: string[] | null

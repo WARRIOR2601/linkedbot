@@ -580,6 +580,11 @@ const ContentCalendar = () => {
         onOpenChange={(open) => !open && setEditingPost(null)}
         onSave={handlePostUpdate}
         onDelete={handlePostDelete}
+        onRetry={async (id) => {
+          const result = await updatePost(id, { status: "scheduled", error_message: null, retry_count: 0 });
+          if (!result.error) toast.success("Post queued for retry");
+          return result;
+        }}
       />
 
       {/* Event Dialog */}
