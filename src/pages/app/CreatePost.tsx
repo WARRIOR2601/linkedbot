@@ -123,6 +123,7 @@ const CreatePost = () => {
         image_url: imageUrl,
         status: "draft",
         scheduled_at: null,
+        agent_id: null,
       });
 
       if (error) throw new Error(error);
@@ -153,6 +154,7 @@ const CreatePost = () => {
         image_url: imageUrl,
         status: "scheduled",
         scheduled_at: scheduledAt,
+        agent_id: null,
       });
 
       if (error) throw new Error(error);

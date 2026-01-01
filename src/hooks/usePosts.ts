@@ -7,6 +7,7 @@ export type PostStatus = "draft" | "scheduled" | "posted" | "failed";
 export interface Post {
   id: string;
   user_id: string;
+  agent_id: string | null;
   content: string;
   ai_model: string;
   tags: string[];
