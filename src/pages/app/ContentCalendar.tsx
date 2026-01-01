@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth, isSameMonth, isSameDay, addWeeks, addMonths, parseISO } from "date-fns";
 import { toast } from "sonner";
@@ -6,25 +6,28 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { usePosts, Post } from "@/hooks/usePosts";
-import { useUpcomingEvents, UpcomingEvent } from "@/hooks/useUpcomingEvents";
-import { EditPostDialog } from "@/components/posts/EditPostDialog";
-import { EventDialog } from "@/components/events/EventDialog";
-import { AI_MODELS } from "@/lib/ai-models";
+import { useAgents, AGENT_TYPES } from "@/hooks/useAgents";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
   Clock,
   Calendar as CalendarIcon,
-  Edit,
-  Trash2,
-  Flag,
-  GripVertical,
+  Bot,
+  Image as ImageIcon,
+  Upload,
+  X,
+  Eye,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const months = [
@@ -34,24 +37,22 @@ const months = [
 
 const ContentCalendar = () => {
   const navigate = useNavigate();
-  const { posts, isLoading: postsLoading, updatePost, deletePost, refetch } = usePosts();
-  const { events, isLoading: eventsLoading, createEvent, updateEvent, deleteEvent } = useUpcomingEvents();
+  const { posts, isLoading: postsLoading, updatePost, refetch } = usePosts();
+  const { agents, isLoading: agentsLoading } = useAgents();
   
   const [view, setView] = useState<"week" | "month">("week");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [showDrafts, setShowDrafts] = useState(true);
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [eventDialogOpen, setEventDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<UpcomingEvent | null>(null);
-  const [draggedPost, setDraggedPost] = useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [uploadingForDate, setUploadingForDate] = useState<Date | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isLoading = postsLoading || eventsLoading;
+  const isLoading = postsLoading || agentsLoading;
 
-  // Filter posts based on showDrafts toggle
+  // Only show scheduled and posted posts (agent-created)
   const filteredPosts = useMemo(() => {
-    if (showDrafts) return posts;
-    return posts.filter((p) => p.status === "scheduled");
-  }, [posts, showDrafts]);
+    return posts.filter((p) => p.status === "scheduled" || p.status === "posted");
+  }, [posts]);
 
   const getWeekDates = () => {
     const week = [];
@@ -64,7 +65,6 @@ const ContentCalendar = () => {
 
   const getMonthDates = () => {
     const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
     const start = startOfWeek(monthStart, { weekStartsOn: 0 });
     const dates = [];
 
@@ -81,15 +81,12 @@ const ContentCalendar = () => {
 
   const getPostsForDate = (date: Date) => {
     return filteredPosts.filter((post) => {
-      if (post.status === "draft") {
-        return isSameDay(parseISO(post.created_at), date);
-      }
       return post.scheduled_at && isSameDay(parseISO(post.scheduled_at), date);
     });
   };
 
-  const getEventsForDate = (date: Date) => {
-    return events.filter((event) => isSameDay(parseISO(event.event_date), date));
+  const getAgentForPost = (post: Post) => {
+    return agents.find((a) => a.id === post.agent_id);
   };
 
   const navigateWeek = (direction: number) => {
@@ -100,128 +97,81 @@ const ContentCalendar = () => {
     setCurrentDate((prev) => addMonths(prev, direction));
   };
 
-  const handlePostUpdate = async (id: string, updates: Partial<Post>) => {
-    const result = await updatePost(id, updates);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Post updated successfully");
-    }
-    return result;
-  };
+  // Handle image upload for a specific date
+  const handleImageUpload = async (file: File, targetDate: Date) => {
+    setIsUploading(true);
+    try {
+      // Upload to storage
+      const fileName = `calendar-images/${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("post-images")
+        .upload(fileName, file);
 
-  const handlePostDelete = async (id: string) => {
-    const result = await deletePost(id);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Post deleted successfully");
-    }
-    return result;
-  };
-
-  const handleEventSave = async (data: { title: string; description: string | null; event_date: string; event_type: string }) => {
-    if (editingEvent) {
-      const result = await updateEvent(editingEvent.id, data);
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Event updated");
+      if (uploadError) {
+        // If bucket doesn't exist, create a draft post without image URL
+        console.error("Upload error:", uploadError);
+        toast.error("Image upload failed. Please try again.");
+        return;
       }
-      return result;
-    } else {
-      const result = await createEvent(data);
-      if (result.error) {
-        toast.error(result.error);
+
+      const { data: urlData } = supabase.storage
+        .from("post-images")
+        .getPublicUrl(fileName);
+
+      // Find if there's already a post for this date
+      const existingPost = filteredPosts.find(
+        (p) => p.scheduled_at && isSameDay(parseISO(p.scheduled_at), targetDate)
+      );
+
+      if (existingPost) {
+        // Update existing post with new image
+        await updatePost(existingPost.id, { image_url: urlData.publicUrl });
+        toast.success("Image added to scheduled post");
       } else {
-        toast.success("Event created");
+        // Create a draft post with the image for agents to use
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const scheduleTime = new Date(targetDate);
+          scheduleTime.setHours(9, 0, 0, 0);
+
+          await supabase.from("posts").insert({
+            user_id: user.id,
+            content: "",
+            image_url: urlData.publicUrl,
+            status: "draft",
+            scheduled_at: scheduleTime.toISOString(),
+            ai_model: "agent",
+            post_length: "medium",
+          });
+          toast.success("Image uploaded - agent will create post for this date");
+        }
       }
-      return result;
+
+      refetch();
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+      setUploadingForDate(null);
     }
   };
 
-  const handleEventDelete = async (id: string) => {
-    const result = await deleteEvent(id);
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Event deleted");
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadingForDate) {
+      handleImageUpload(file, uploadingForDate);
     }
-    return result;
+    e.target.value = "";
   };
 
-  // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, post: Post) => {
-    setDraggedPost(post);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetDate: Date) => {
-    e.preventDefault();
-    if (!draggedPost) return;
-
-    // Only allow rescheduling for scheduled posts
-    if (draggedPost.status !== "scheduled") {
-      toast.error("Only scheduled posts can be rescheduled by dragging");
-      setDraggedPost(null);
-      return;
-    }
-
-    const existingTime = draggedPost.scheduled_at 
-      ? format(parseISO(draggedPost.scheduled_at), "HH:mm:ss")
-      : "09:00:00";
-    
-    const newScheduledAt = new Date(targetDate);
-    const [hours, minutes, seconds] = existingTime.split(":").map(Number);
-    newScheduledAt.setHours(hours, minutes, seconds);
-
-    // Validate future date
-    if (newScheduledAt < new Date()) {
-      toast.error("Cannot schedule posts in the past");
-      setDraggedPost(null);
-      return;
-    }
-
-    const result = await updatePost(draggedPost.id, {
-      scheduled_at: newScheduledAt.toISOString(),
-    });
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success("Post rescheduled");
-    }
-    setDraggedPost(null);
-  };
-
-  const getModelLabel = (aiModel: string) => {
-    const model = AI_MODELS.find((m) => m.id === aiModel);
-    return model?.name.split(" / ")[0] || aiModel;
+  const triggerUploadForDate = (date: Date) => {
+    setUploadingForDate(date);
+    fileInputRef.current?.click();
   };
 
   const weekDates = getWeekDates();
   const monthDates = getMonthDates();
-
-  const upcomingPosts = useMemo(() => {
-    return filteredPosts
-      .filter((p) => {
-        if (p.status === "scheduled" && p.scheduled_at) {
-          return parseISO(p.scheduled_at) >= new Date();
-        }
-        return p.status === "draft";
-      })
-      .sort((a, b) => {
-        const dateA = a.scheduled_at ? parseISO(a.scheduled_at) : parseISO(a.created_at);
-        const dateB = b.scheduled_at ? parseISO(b.scheduled_at) : parseISO(b.created_at);
-        return dateA.getTime() - dateB.getTime();
-      })
-      .slice(0, 10);
-  }, [filteredPosts]);
 
   if (isLoading) {
     return (
@@ -237,21 +187,22 @@ const ContentCalendar = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Content Calendar</h1>
-            <p className="text-muted-foreground">Schedule and manage your LinkedIn posts</p>
+            <p className="text-muted-foreground">View and supervise agent-planned posts</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="show-drafts"
-                checked={showDrafts}
-                onCheckedChange={setShowDrafts}
-              />
-              <Label htmlFor="show-drafts" className="text-sm">Show Drafts</Label>
-            </div>
+          <div className="flex items-center gap-3">
             <div className="flex items-center rounded-lg border border-border overflow-hidden">
               <button
                 onClick={() => setView("week")}
@@ -270,22 +221,22 @@ const ContentCalendar = () => {
                 Month
               </button>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditingEvent(null);
-                setEventDialogOpen(true);
-              }}
-            >
-              <Flag className="w-4 h-4 mr-2" />
-              Add Event
-            </Button>
-            <Button variant="hero" onClick={() => navigate("/app/create")}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Post
+            <Button variant="outline" onClick={() => navigate("/app/agents")}>
+              <Bot className="w-4 h-4 mr-2" />
+              Manage Agents
             </Button>
           </div>
         </div>
+
+        {/* Info Banner */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <p className="text-sm">
+              <span className="font-medium">Supervision Mode:</span> View posts planned by your agents. 
+              Upload an image on any date to guide the agent's post for that day.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Calendar Navigation */}
         <Card>
@@ -318,8 +269,8 @@ const ContentCalendar = () => {
               <div className="grid grid-cols-7 gap-4">
                 {weekDates.map((date, index) => {
                   const dayPosts = getPostsForDate(date);
-                  const dayEvents = getEventsForDate(date);
                   const isToday = isSameDay(date, new Date());
+                  const isFuture = date >= new Date();
 
                   return (
                     <div
@@ -327,8 +278,6 @@ const ContentCalendar = () => {
                       className={`min-h-[200px] rounded-lg border ${
                         isToday ? "border-primary bg-primary/5" : "border-border"
                       } p-3`}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, date)}
                     >
                       <div className="text-center mb-3">
                         <p className="text-xs text-muted-foreground">{daysOfWeek[date.getDay()]}</p>
@@ -337,57 +286,66 @@ const ContentCalendar = () => {
                         </p>
                       </div>
                       <div className="space-y-2">
-                        {/* Events */}
-                        {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            onClick={() => {
-                              setEditingEvent(event);
-                              setEventDialogOpen(true);
-                            }}
-                            className="p-2 rounded-md text-xs cursor-pointer transition-all hover:scale-[1.02] bg-accent/20 border border-accent/30"
-                          >
-                            <div className="flex items-center gap-1">
-                              <Flag className="w-3 h-3" />
-                              <p className="font-medium truncate">{event.title}</p>
-                            </div>
-                          </div>
-                        ))}
                         {/* Posts */}
-                        {dayPosts.map((post) => (
-                          <div
-                            key={post.id}
-                            draggable={post.status === "scheduled"}
-                            onDragStart={(e) => handleDragStart(e, post)}
-                            onClick={() => setEditingPost(post)}
-                            className={`p-2 rounded-md text-xs cursor-pointer transition-all hover:scale-[1.02] ${
-                              post.status === "scheduled"
-                                ? "bg-success/20 border border-success/30"
-                                : "bg-warning/20 border border-warning/30"
-                            }`}
-                          >
-                            <div className="flex items-start gap-1">
-                              {post.status === "scheduled" && (
-                                <GripVertical className="w-3 h-3 shrink-0 mt-0.5 cursor-grab" />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium truncate">{post.content.slice(0, 40)}...</p>
-                                <p className="text-muted-foreground flex items-center gap-1 mt-1">
-                                  <Clock className="w-3 h-3" />
-                                  {post.scheduled_at
-                                    ? format(parseISO(post.scheduled_at), "HH:mm")
-                                    : "No time"}
-                                </p>
+                        {dayPosts.map((post) => {
+                          const agent = getAgentForPost(post);
+                          return (
+                            <div
+                              key={post.id}
+                              onClick={() => setSelectedPost(post)}
+                              className={`p-2 rounded-md text-xs cursor-pointer transition-all hover:scale-[1.02] ${
+                                post.status === "posted"
+                                  ? "bg-success/20 border border-success/30"
+                                  : "bg-primary/20 border border-primary/30"
+                              }`}
+                            >
+                              <div className="flex items-start gap-1">
+                                <div className="min-w-0 flex-1">
+                                  {agent && (
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <Bot className="w-3 h-3" />
+                                      <span className="font-medium truncate">{agent.name}</span>
+                                    </div>
+                                  )}
+                                  <p className="truncate text-muted-foreground">
+                                    {post.content.slice(0, 40)}...
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="flex items-center gap-0.5">
+                                      <Clock className="w-3 h-3" />
+                                      {post.scheduled_at && format(parseISO(post.scheduled_at), "HH:mm")}
+                                    </span>
+                                    {post.image_url && <ImageIcon className="w-3 h-3" />}
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                        <button
-                          onClick={() => navigate("/app/create")}
-                          className="w-full p-2 rounded-md border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-xs text-muted-foreground"
-                        >
-                          <Plus className="w-3 h-3 mx-auto" />
-                        </button>
+                          );
+                        })}
+
+                        {/* Upload Image Button (only for future dates with no posts) */}
+                        {isFuture && dayPosts.length === 0 && (
+                          <button
+                            onClick={() => triggerUploadForDate(date)}
+                            disabled={isUploading}
+                            className="w-full p-3 rounded-md border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-xs text-muted-foreground flex flex-col items-center gap-1"
+                          >
+                            <Upload className="w-4 h-4" />
+                            <span>Upload image</span>
+                          </button>
+                        )}
+
+                        {/* Add image to existing post */}
+                        {isFuture && dayPosts.length > 0 && !dayPosts[0].image_url && (
+                          <button
+                            onClick={() => triggerUploadForDate(date)}
+                            disabled={isUploading}
+                            className="w-full p-2 rounded-md border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-xs text-muted-foreground flex items-center justify-center gap-1"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Add image</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -406,8 +364,8 @@ const ContentCalendar = () => {
                 <div className="grid grid-cols-7 gap-1">
                   {monthDates.map(({ date, isCurrentMonth }, index) => {
                     const dayPosts = getPostsForDate(date);
-                    const dayEvents = getEventsForDate(date);
                     const isToday = isSameDay(date, new Date());
+                    const isFuture = date >= new Date();
 
                     return (
                       <div
@@ -419,43 +377,42 @@ const ContentCalendar = () => {
                             ? "bg-primary/10 border border-primary"
                             : "hover:bg-muted/50"
                         }`}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, date)}
                       >
                         <p className={`text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
                           {date.getDate()}
                         </p>
                         <div className="space-y-1">
-                          {dayEvents.slice(0, 1).map((event) => (
-                            <div
-                              key={event.id}
-                              onClick={() => {
-                                setEditingEvent(event);
-                                setEventDialogOpen(true);
-                              }}
-                              className="p-1 rounded text-xs truncate bg-accent/20 cursor-pointer"
-                            >
-                              <Flag className="w-2 h-2 inline mr-1" />
-                              {event.title}
-                            </div>
-                          ))}
-                          {dayPosts.slice(0, 2).map((post) => (
-                            <div
-                              key={post.id}
-                              onClick={() => setEditingPost(post)}
-                              className={`p-1 rounded text-xs truncate cursor-pointer ${
-                                post.status === "scheduled"
-                                  ? "bg-success/20"
-                                  : "bg-warning/20"
-                              }`}
-                            >
-                              {post.content.slice(0, 25)}...
-                            </div>
-                          ))}
-                          {(dayPosts.length > 2 || dayEvents.length > 1) && (
+                          {dayPosts.slice(0, 2).map((post) => {
+                            const agent = getAgentForPost(post);
+                            return (
+                              <div
+                                key={post.id}
+                                onClick={() => setSelectedPost(post)}
+                                className={`p-1 rounded text-xs truncate cursor-pointer ${
+                                  post.status === "posted"
+                                    ? "bg-success/20"
+                                    : "bg-primary/20"
+                                }`}
+                              >
+                                <div className="flex items-center gap-1">
+                                  <Bot className="w-2 h-2 shrink-0" />
+                                  <span className="truncate">{agent?.name || "Agent"}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {dayPosts.length > 2 && (
                             <p className="text-xs text-muted-foreground">
-                              +{dayPosts.length + dayEvents.length - (dayPosts.slice(0, 2).length + dayEvents.slice(0, 1).length)} more
+                              +{dayPosts.length - 2} more
                             </p>
+                          )}
+                          {isFuture && isCurrentMonth && dayPosts.length === 0 && (
+                            <button
+                              onClick={() => triggerUploadForDate(date)}
+                              className="w-full p-1 rounded text-xs text-muted-foreground hover:bg-muted flex items-center justify-center"
+                            >
+                              <Upload className="w-3 h-3" />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -467,137 +424,76 @@ const ContentCalendar = () => {
           </CardContent>
         </Card>
 
-        {/* Upcoming Posts & Events */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Upcoming Posts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Upcoming Posts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {upcomingPosts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CalendarIcon className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                  <p>No upcoming posts</p>
-                  <Button variant="link" onClick={() => navigate("/app/create")}>
-                    Create your first post
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {upcomingPosts.map((post) => (
-                    <div
-                      key={post.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <CalendarIcon className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{post.content.slice(0, 50)}...</p>
-                          <p className="text-sm text-muted-foreground">
-                            {post.scheduled_at
-                              ? format(parseISO(post.scheduled_at), "MMM d, yyyy 'at' h:mm a")
-                              : "Draft - " + format(parseISO(post.created_at), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <Badge variant={post.status === "scheduled" ? "default" : "secondary"}>
-                          {post.status}
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={() => setEditingPost(post)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
+        {/* Post Preview Dialog */}
+        <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Post Preview
+              </DialogTitle>
+            </DialogHeader>
+            {selectedPost && (
+              <div className="space-y-4">
+                {/* Agent Info */}
+                {getAgentForPost(selectedPost) && (
+                  <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+                    <Bot className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="font-medium">{getAgentForPost(selectedPost)?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {AGENT_TYPES.find(t => t.id === getAgentForPost(selectedPost)?.agent_type)?.name}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                )}
 
-          {/* Upcoming Events */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Planning Events</CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setEditingEvent(null);
-                  setEventDialogOpen(true);
-                }}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {events.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Flag className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                  <p>No planning events</p>
-                  <p className="text-sm mt-1">Add events to plan your content around</p>
+                {/* Status & Time */}
+                <div className="flex items-center gap-4">
+                  <Badge variant={selectedPost.status === "posted" ? "default" : "secondary"}>
+                    {selectedPost.status}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {selectedPost.scheduled_at && format(parseISO(selectedPost.scheduled_at), "MMM d, yyyy 'at' h:mm a")}
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {events.slice(0, 5).map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                      onClick={() => {
-                        setEditingEvent(event);
-                        setEventDialogOpen(true);
-                      }}
-                    >
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                          <Flag className="w-5 h-5 text-accent-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium">{event.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(parseISO(event.event_date), "MMM d, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="outline">{event.event_type.replace("_", " ")}</Badge>
-                    </div>
-                  ))}
+
+                {/* Image */}
+                {selectedPost.image_url && (
+                  <div className="rounded-lg overflow-hidden border">
+                    <img
+                      src={selectedPost.image_url}
+                      alt="Post image"
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Content */}
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="whitespace-pre-wrap text-sm">{selectedPost.content}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                {/* Hashtags */}
+                {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedPost.hashtags.map((tag) => (
+                      <Badge key={tag} variant="outline">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Posts are created and managed by agents. You can upload images to guide content.
+                </p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Edit Post Dialog */}
-      <EditPostDialog
-        post={editingPost}
-        open={!!editingPost}
-        onOpenChange={(open) => !open && setEditingPost(null)}
-        onSave={handlePostUpdate}
-        onDelete={handlePostDelete}
-        onRetry={async (id) => {
-          const result = await updatePost(id, { status: "scheduled", error_message: null, retry_count: 0 });
-          if (!result.error) toast.success("Post queued for retry");
-          return result;
-        }}
-      />
-
-      {/* Event Dialog */}
-      <EventDialog
-        event={editingEvent}
-        open={eventDialogOpen}
-        onOpenChange={(open) => {
-          setEventDialogOpen(open);
-          if (!open) setEditingEvent(null);
-        }}
-        onSave={handleEventSave}
-        onDelete={editingEvent ? handleEventDelete : undefined}
-      />
     </AppLayout>
   );
 };

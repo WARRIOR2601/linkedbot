@@ -7,19 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { usePosts } from "@/hooks/usePosts";
+import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
-  Users,
-  Eye,
+  Bot,
   Calendar,
   Sparkles,
-  AlertCircle,
   Plus,
   BarChart3,
   FileText,
   Clock,
   CalendarCheck,
+  Play,
+  Pause,
+  AlertTriangle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -29,29 +31,19 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
-
-// Mock analytics data (will be replaced with real data in future steps)
-const engagementData = [
-  { name: "Mon", views: 1200, likes: 80, comments: 24 },
-  { name: "Tue", views: 1800, likes: 120, comments: 45 },
-  { name: "Wed", views: 2400, likes: 180, comments: 62 },
-  { name: "Thu", views: 1600, likes: 95, comments: 38 },
-  { name: "Fri", views: 2200, likes: 150, comments: 55 },
-  { name: "Sat", views: 800, likes: 45, comments: 18 },
-  { name: "Sun", views: 600, likes: 35, comments: 12 },
-];
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { posts, isLoading } = usePosts();
+  const { posts, isLoading: postsLoading } = usePosts();
+  const { agents, isLoading: agentsLoading, toggleAgentStatus } = useAgents();
+
+  const isLoading = postsLoading || agentsLoading;
 
   // Calculate stats from real post data
   const stats = useMemo(() => {
     const scheduledPosts = posts.filter((p) => p.status === "scheduled");
-    const draftPosts = posts.filter((p) => p.status === "draft");
+    const postedPosts = posts.filter((p) => p.status === "posted");
     const totalPosts = posts.length;
     
     // Get next scheduled post
@@ -65,14 +57,25 @@ const Dashboard = () => {
 
     const nextPost = upcomingScheduled[0];
 
+    // Agent stats
+    const activeAgents = agents.filter((a) => a.status === "active").length;
+    const pausedAgents = agents.filter((a) => a.status === "paused").length;
+    const draftAgents = agents.filter((a) => a.status === "draft").length;
+    const errorAgents = agents.filter((a) => a.status === "error").length;
+
     return {
       totalPosts,
+      postedCount: postedPosts.length,
       scheduledCount: scheduledPosts.length,
-      draftCount: draftPosts.length,
       upcomingCount: upcomingScheduled.length,
       nextPost,
+      totalAgents: agents.length,
+      activeAgents,
+      pausedAgents,
+      draftAgents,
+      errorAgents,
     };
-  }, [posts]);
+  }, [posts, agents]);
 
   // Get upcoming scheduled posts
   const upcomingPosts = useMemo(() => {
@@ -83,15 +86,24 @@ const Dashboard = () => {
         const dateB = b.scheduled_at ? parseISO(b.scheduled_at) : new Date();
         return dateA.getTime() - dateB.getTime();
       })
-      .slice(0, 3);
+      .slice(0, 5);
   }, [posts]);
 
-  // Get recent posts (both draft and scheduled)
-  const recentPosts = useMemo(() => {
-    return posts
-      .sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime())
-      .slice(0, 3);
-  }, [posts]);
+  // Get agent for post
+  const getAgentForPost = (agentId: string | null) => {
+    if (!agentId) return null;
+    return agents.find((a) => a.id === agentId);
+  };
+
+  // Mock engagement data for visualization
+  const engagementData = useMemo(() => {
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    return days.map((day) => ({
+      name: day,
+      posts: Math.floor(Math.random() * 3),
+      engagement: Math.floor(Math.random() * 100),
+    }));
+  }, []);
 
   if (isLoading) {
     return <DashboardLoading />;
@@ -108,7 +120,7 @@ const Dashboard = () => {
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back, {displayName}!</p>
           </div>
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <Button variant="outline" asChild>
               <Link to="/app/calendar">
                 <Calendar className="w-4 h-4 mr-2" />
@@ -130,13 +142,17 @@ const Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-primary" />
+                  <Bot className="w-5 h-5 text-primary" />
                 </div>
-                <TrendingUp className="w-4 h-4 text-success" />
+                {stats.activeAgents > 0 && (
+                  <Badge className="bg-success/10 text-success border-success/20">
+                    {stats.activeAgents} active
+                  </Badge>
+                )}
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold">{stats.totalPosts}</p>
-                <p className="text-sm text-muted-foreground">Total Posts</p>
+                <p className="text-2xl font-bold">{stats.totalAgents}</p>
+                <p className="text-sm text-muted-foreground">Total Agents</p>
               </div>
             </CardContent>
           </Card>
@@ -147,9 +163,10 @@ const Dashboard = () => {
                 <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
                   <CalendarCheck className="w-5 h-5 text-success" />
                 </div>
+                <TrendingUp className="w-4 h-4 text-success" />
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold">{stats.upcomingCount}</p>
+                <p className="text-2xl font-bold">{stats.scheduledCount}</p>
                 <p className="text-sm text-muted-foreground">Scheduled Posts</p>
               </div>
             </CardContent>
@@ -158,13 +175,13 @@ const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-warning" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary" />
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold">{stats.draftCount}</p>
-                <p className="text-sm text-muted-foreground">Draft Posts</p>
+                <p className="text-2xl font-bold">{stats.postedCount}</p>
+                <p className="text-sm text-muted-foreground">Posts Published</p>
               </div>
             </CardContent>
           </Card>
@@ -173,7 +190,7 @@ const Dashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-accent-foreground" />
+                  <Clock className="w-5 h-5 text-accent-foreground" />
                 </div>
               </div>
               <div className="mt-4">
@@ -187,7 +204,7 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <p className="text-lg font-bold">No posts</p>
-                    <p className="text-sm text-muted-foreground">Schedule one now</p>
+                    <p className="text-sm text-muted-foreground">Activate an agent</p>
                   </>
                 )}
               </div>
@@ -195,62 +212,86 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Charts Row */}
+        {/* Main Content */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Engagement Chart (placeholder for future analytics) */}
+          {/* Active Agents */}
           <Card className="lg:col-span-2">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Engagement Overview
-                <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+                <Bot className="w-5 h-5" />
+                Your Agents
               </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/app/agents">View All</Link>
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={engagementData}>
-                    <defs>
-                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="views"
-                      stroke="hsl(var(--primary))"
-                      fillOpacity={1}
-                      fill="url(#colorViews)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="likes"
-                      stroke="hsl(var(--accent))"
-                      fillOpacity={1}
-                      fill="url(#colorLikes)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {agents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bot className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No agents yet</p>
+                  <Button variant="link" asChild className="mt-2">
+                    <Link to="/app/agents/new">Create your first agent</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {agents.slice(0, 4).map((agent) => {
+                    const status = agent.status as AgentStatus;
+                    const agentType = AGENT_TYPES.find((t) => t.id === agent.agent_type);
+                    return (
+                      <div
+                        key={agent.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                            <Bot className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{agent.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {agentType?.name} • {agent.posts_created} posts
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getStatusColor(status)}>
+                            {status === "active" && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-current mr-1 animate-pulse" />
+                            )}
+                            {status === "error" && <AlertTriangle className="w-3 h-3 mr-1" />}
+                            {getStatusLabel(status)}
+                          </Badge>
+                          {(status === "active" || status === "paused") && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                toggleAgentStatus.mutate({
+                                  id: agent.id,
+                                  status: status === "active" ? "paused" : "active",
+                                })
+                              }
+                            >
+                              {status === "active" ? (
+                                <Pause className="w-4 h-4" />
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Scheduled Posts */}
+          {/* Upcoming Posts */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Upcoming Posts</CardTitle>
@@ -263,25 +304,33 @@ const Dashboard = () => {
                 <div className="text-center py-6 text-muted-foreground">
                   <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No scheduled posts</p>
+                  <p className="text-xs">Activate an agent to start posting</p>
                 </div>
               ) : (
-                upcomingPosts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Calendar className="w-5 h-5 text-primary" />
+                upcomingPosts.map((post) => {
+                  const agent = getAgentForPost(post.agent_id);
+                  return (
+                    <div
+                      key={post.id}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {agent?.name || "Agent"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {post.content.slice(0, 50)}...
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {post.scheduled_at && format(parseISO(post.scheduled_at), "MMM d 'at' h:mm a")}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{post.content.slice(0, 40)}...</p>
-                      <p className="text-sm text-muted-foreground">
-                        {post.scheduled_at && format(parseISO(post.scheduled_at), "MMM d 'at' h:mm a")}
-                      </p>
-                    </div>
-                    <Badge variant="default" className="shrink-0">scheduled</Badge>
-                  </div>
-                ))
+                  );
+                })
               )}
               <Button variant="outline" className="w-full" asChild>
                 <Link to="/app/agents/new">
@@ -293,52 +342,48 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Recent Posts */}
+        {/* Performance Overview */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Posts</CardTitle>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/app/calendar">View All</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Performance Overview
+              <Badge variant="secondary" className="ml-2">Coming Soon</Badge>
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {recentPosts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>No posts yet</p>
-              <Button variant="link" asChild>
-                <Link to="/app/agents/new">Create your first agent</Link>
-              </Button>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={engagementData}>
+                  <defs>
+                    <linearGradient id="colorPosts" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="engagement"
+                    stroke="hsl(var(--primary))"
+                    fillOpacity={1}
+                    fill="url(#colorPosts)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-            ) : (
-              <div className="space-y-4">
-                {recentPosts.map((post) => (
-                  <div key={post.id} className="p-4 rounded-lg bg-muted/50">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium mb-2 line-clamp-2">{post.content.slice(0, 100)}...</p>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                          <span>Created {format(parseISO(post.created_at), "MMM d, yyyy")}</span>
-                          {post.tags && post.tags.length > 0 && (
-                            <>
-                              <span>•</span>
-                              {post.tags.slice(0, 3).map((tag) => (
-                                <Badge key={tag} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <Badge variant={post.status === "scheduled" ? "default" : "secondary"}>
-                        {post.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Engagement data will appear after your posts are published on LinkedIn
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -376,8 +421,10 @@ export const DashboardLoading = () => {
             <CardHeader>
               <Skeleton className="h-6 w-40" />
             </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[300px] w-full" />
+            <CardContent className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
             </CardContent>
           </Card>
           <Card>
@@ -391,35 +438,6 @@ export const DashboardLoading = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </AppLayout>
-  );
-};
-
-// Empty State Component
-export const DashboardEmpty = () => {
-  return (
-    <AppLayout>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome to Linkedbot!</p>
-        </div>
-
-        <Card className="text-center py-16">
-          <CardContent>
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Connect Your LinkedIn</h2>
-            <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              To start tracking your performance and generating AI-powered content, connect your LinkedIn account first.
-            </p>
-            <Button variant="hero" asChild>
-              <Link to="/app/linkedin">Connect LinkedIn</Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     </AppLayout>
   );

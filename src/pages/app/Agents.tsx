@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgents, AGENT_TYPES, Agent } from "@/hooks/useAgents";
+import { useAgents, AGENT_TYPES, Agent, AgentStatus, getStatusColor, getStatusLabel } from "@/hooks/useAgents";
 import {
   Bot,
   Plus,
@@ -14,11 +13,11 @@ import {
   Settings,
   Trash2,
   Clock,
-  FileText,
   Sparkles,
-  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, formatDistanceToNow } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,21 +31,10 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Agents = () => {
-  const { agents, isLoading, toggleAgentStatus, deleteAgent } = useAgents();
+  const { agents, isLoading, toggleAgentStatus, deleteAgent, activateAgent } = useAgents();
 
   const getAgentTypeName = (type: string) => {
     return AGENT_TYPES.find((t) => t.id === type)?.name || type;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "running":
-        return "bg-success/10 text-success border-success/20";
-      case "paused":
-        return "bg-warning/10 text-warning border-warning/20";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
   };
 
   if (isLoading) {
@@ -116,9 +104,9 @@ const Agents = () => {
                 key={agent.id}
                 agent={agent}
                 onToggleStatus={toggleAgentStatus.mutate}
+                onActivate={activateAgent.mutate}
                 onDelete={deleteAgent.mutate}
                 getAgentTypeName={getAgentTypeName}
-                getStatusColor={getStatusColor}
               />
             ))}
           </div>
@@ -130,19 +118,21 @@ const Agents = () => {
 
 interface AgentCardProps {
   agent: Agent;
-  onToggleStatus: (data: { id: string; status: "running" | "paused" }) => void;
+  onToggleStatus: (data: { id: string; status: "active" | "paused" }) => void;
+  onActivate: (id: string) => void;
   onDelete: (id: string) => void;
   getAgentTypeName: (type: string) => string;
-  getStatusColor: (status: string) => string;
 }
 
 const AgentCard = ({
   agent,
   onToggleStatus,
+  onActivate,
   onDelete,
   getAgentTypeName,
-  getStatusColor,
 }: AgentCardProps) => {
+  const status = agent.status as AgentStatus;
+  
   return (
     <Card className="relative overflow-hidden hover:shadow-lg transition-shadow">
       <CardHeader className="pb-2">
@@ -158,15 +148,12 @@ const AgentCard = ({
               </CardDescription>
             </div>
           </div>
-          <Badge className={getStatusColor(agent.status)}>
-            {agent.status === "running" ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
-                Running
-              </>
-            ) : (
-              "Paused"
+          <Badge className={getStatusColor(status)}>
+            {status === "active" && (
+              <span className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 animate-pulse" />
             )}
+            {status === "error" && <AlertTriangle className="w-3 h-3 mr-1" />}
+            {getStatusLabel(status)}
           </Badge>
         </div>
       </CardHeader>
@@ -187,7 +174,7 @@ const AgentCard = ({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="w-4 h-4" />
           {agent.last_post_at ? (
-            <span>Last post: {format(parseISO(agent.last_post_at), "MMM d, h:mm a")}</span>
+            <span>Last post: {formatDistanceToNow(parseISO(agent.last_post_at), { addSuffix: true })}</span>
           ) : (
             <span>No posts yet</span>
           )}
@@ -209,31 +196,67 @@ const AgentCard = ({
           </div>
         )}
 
+        {/* Draft Warning */}
+        {status === "draft" && (
+          <div className="p-2 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+            <p className="font-medium">Training not complete</p>
+            <p className="text-xs">Activate to enable autonomous posting</p>
+          </div>
+        )}
+
+        {/* Error Warning */}
+        {status === "error" && (
+          <div className="p-2 rounded-lg bg-destructive/10 text-sm text-destructive">
+            <p className="font-medium">Agent needs attention</p>
+            <p className="text-xs">Check settings and try reactivating</p>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center gap-2 pt-2">
-          <Button
-            variant={agent.status === "running" ? "outline" : "default"}
-            size="sm"
-            className="flex-1"
-            onClick={() =>
-              onToggleStatus({
-                id: agent.id,
-                status: agent.status === "running" ? "paused" : "running",
-              })
-            }
-          >
-            {agent.status === "running" ? (
-              <>
-                <Pause className="w-4 h-4 mr-1" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-1" />
-                Start
-              </>
-            )}
-          </Button>
+          {status === "draft" ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => onActivate(agent.id)}
+            >
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Activate Agent
+            </Button>
+          ) : status === "error" ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => onActivate(agent.id)}
+            >
+              <Play className="w-4 h-4 mr-1" />
+              Retry
+            </Button>
+          ) : (
+            <Button
+              variant={status === "active" ? "outline" : "default"}
+              size="sm"
+              className="flex-1"
+              onClick={() =>
+                onToggleStatus({
+                  id: agent.id,
+                  status: status === "active" ? "paused" : "active",
+                })
+              }
+            >
+              {status === "active" ? (
+                <>
+                  <Pause className="w-4 h-4 mr-1" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-1" />
+                  Start
+                </>
+              )}
+            </Button>
+          )}
           <Button variant="outline" size="icon" asChild>
             <Link to={`/app/agents/${agent.id}`}>
               <Settings className="w-4 h-4" />
