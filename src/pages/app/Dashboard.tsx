@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { usePosts } from "@/hooks/usePosts";
 import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
@@ -26,6 +27,10 @@ import {
   AlertTriangle,
   Crown,
   Zap,
+  Building2,
+  Users,
+  Target,
+  Settings,
 } from "lucide-react";
 import {
   AreaChart,
@@ -42,8 +47,9 @@ const Dashboard = () => {
   const { posts, isLoading: postsLoading } = usePosts();
   const { agents, isLoading: agentsLoading, toggleAgentStatus } = useAgents();
   const { subscription, isLoading: subLoading, planDetails, isTrialActive, trialDaysRemaining, canCreateAgent } = useSubscription();
+  const { profile, isLoading: profileLoading } = useOnboarding();
 
-  const isLoading = postsLoading || agentsLoading || subLoading;
+  const isLoading = postsLoading || agentsLoading || subLoading || profileLoading;
 
   // Calculate stats from real post data
   const stats = useMemo(() => {
@@ -168,6 +174,46 @@ const Dashboard = () => {
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/app/billing">View Plans</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Business Context Card */}
+        {profile && (profile.business_name || profile.industry) && (
+          <Card className="border-muted bg-muted/30">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4 flex-1">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">
+                      {profile.business_name || "Your Business"}
+                    </p>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      {profile.industry && (
+                        <span className="flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          {profile.industry}
+                        </span>
+                      )}
+                      {profile.target_audience && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {profile.target_audience.slice(0, 30)}{profile.target_audience.length > 30 ? "..." : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/app/settings">
+                    <Settings className="w-4 h-4 mr-1" />
+                    Edit
+                  </Link>
                 </Button>
               </div>
             </CardContent>
