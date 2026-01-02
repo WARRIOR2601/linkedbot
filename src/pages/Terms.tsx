@@ -68,24 +68,48 @@ const Terms = () => {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">7. LinkedIn Integration Terms</h2>
+              <h2 className="text-2xl font-semibold">7. AI Agents & LinkedIn Integration Terms</h2>
               <p className="text-muted-foreground">
-                By connecting your LinkedIn account to Linkedbot, you agree to the following terms regarding LinkedIn data usage.
+                Linkedbot uses AI agents to help you create and schedule LinkedIn content. By using our service and connecting your LinkedIn account, you agree to the following terms.
               </p>
+
+              <h3 className="text-xl font-medium mt-4">What Are AI Agents?</h3>
+              <p className="text-muted-foreground">
+                AI agents are content assistants trained by you to behave like a content intern. Each agent follows your defined rules, tone, posting frequency, and boundaries. Agents do not act independently and cannot perform any action without your prior authorization.
+              </p>
+
+              <h3 className="text-xl font-medium mt-4">What Agents Can Do</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Draft LinkedIn post content based on your preferences and training</li>
+                <li>Schedule posts according to rules you define</li>
+                <li>Publish posts only after LinkedIn account connection and your explicit consent</li>
+              </ul>
+
+              <h3 className="text-xl font-medium mt-4">What Agents Cannot Do</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Like, comment on, or share other users' posts</li>
+                <li>Send direct messages or InMail</li>
+                <li>Send or accept connection requests</li>
+                <li>Perform any engagement automation</li>
+                <li>Scrape or extract LinkedIn data</li>
+                <li>Act without your explicit authorization</li>
+              </ul>
 
               <h3 className="text-xl font-medium mt-4">User Consent and Control</h3>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
                 <li>You must explicitly authorize the connection between Linkedbot and your LinkedIn account</li>
+                <li>By connecting LinkedIn, you allow your AI agents to publish posts on your behalf using official LinkedIn APIs</li>
                 <li>You retain full control over what content is posted to your LinkedIn profile</li>
                 <li>All posts require your review and approval before publication</li>
-                <li>You may disconnect your LinkedIn account at any time</li>
+                <li>You may pause agents or disconnect your LinkedIn account at any time</li>
+                <li>Agents are disabled if LinkedIn is disconnected and cannot bypass your control</li>
               </ul>
 
               <h3 className="text-xl font-medium mt-4">Permitted Use of LinkedIn Data</h3>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
                 <li>We access only the data necessary to provide our posting service</li>
                 <li>We use your profile information solely to identify your account within our application</li>
-                <li>We use posting permissions only to publish content you have approved</li>
+                <li>We use posting permissions only to publish content you have approved through your AI agents</li>
               </ul>
 
               <h3 className="text-xl font-medium mt-4">Prohibited Activities</h3>
@@ -101,17 +125,17 @@ const Terms = () => {
 
               <h3 className="text-xl font-medium mt-4">Token Security</h3>
               <p className="text-muted-foreground">
-                Your LinkedIn access credentials are encrypted and stored securely. You are responsible for maintaining the security of your Linkedbot account, which provides access to your connected LinkedIn account.
+                Your LinkedIn access credentials are encrypted and stored securely. You are responsible for maintaining the security of your Linkedbot account, which provides access to your connected LinkedIn account and AI agents.
               </p>
 
               <h3 className="text-xl font-medium mt-4">Disconnection and Data Removal</h3>
               <p className="text-muted-foreground">
-                Upon disconnecting your LinkedIn account, we will delete your LinkedIn tokens and associated profile data from our systems. Scheduled posts that have not yet been published will be cancelled.
+                Upon disconnecting your LinkedIn account, we will delete your LinkedIn tokens and associated profile data from our systems. All AI agents will be disabled immediately. Scheduled posts that have not yet been published will be cancelled.
               </p>
 
               <h3 className="text-xl font-medium mt-4">Compliance with LinkedIn Policies</h3>
               <p className="text-muted-foreground">
-                Your use of Linkedbot must comply with LinkedIn's User Agreement and Professional Community Policies. We reserve the right to suspend or terminate your access if you violate LinkedIn's terms through our service.
+                Your use of Linkedbot and AI agents must comply with LinkedIn's User Agreement and Professional Community Policies. We reserve the right to suspend or terminate your access if you violate LinkedIn's terms through our service.
               </p>
             </div>
 

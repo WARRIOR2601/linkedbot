@@ -268,14 +268,17 @@ const CreateAgent = () => {
                 <Bot className="w-5 h-5" />
                 Agent Identity
               </CardTitle>
-              <CardDescription>Give your agent a name and purpose. This defines what kind of content it will create.</CardDescription>
+              <CardDescription>
+                AI agents are like content interns—they draft posts based on your rules and preferences. 
+                They cannot act independently and require your approval before publishing.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="name">Agent Name *</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Thought Leader, Hiring Bot, Content Creator"
+                  placeholder="e.g., Thought Leader, Hiring Assistant, Content Creator"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
