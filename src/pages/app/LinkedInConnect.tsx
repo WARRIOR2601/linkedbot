@@ -183,6 +183,18 @@ const LinkedInConnect = () => {
           </AlertDescription>
         </Alert>
 
+        {/* Why Approval Is Needed */}
+        <Alert className="border-muted bg-muted/30">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Why is LinkedIn API approval needed?</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            LinkedIn requires all third-party applications to complete an API approval process before enabling 
+            posting capabilities. This ensures user data is handled securely and that applications comply with 
+            LinkedIn's policies. During this approval period, you can still connect your account, draft posts, 
+            and schedule content—publishing will be enabled automatically once approval is granted.
+          </AlertDescription>
+        </Alert>
+
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
           <Card className={connectionStatus === "connected" ? "border-success/50" : ""}>
