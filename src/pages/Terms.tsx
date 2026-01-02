@@ -68,7 +68,55 @@ const Terms = () => {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">7. Contact Us</h2>
+              <h2 className="text-2xl font-semibold">7. LinkedIn Integration Terms</h2>
+              <p className="text-muted-foreground">
+                By connecting your LinkedIn account to Linkedbot, you agree to the following terms regarding LinkedIn data usage.
+              </p>
+
+              <h3 className="text-xl font-medium mt-4">User Consent and Control</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>You must explicitly authorize the connection between Linkedbot and your LinkedIn account</li>
+                <li>You retain full control over what content is posted to your LinkedIn profile</li>
+                <li>All posts require your review and approval before publication</li>
+                <li>You may disconnect your LinkedIn account at any time</li>
+              </ul>
+
+              <h3 className="text-xl font-medium mt-4">Permitted Use of LinkedIn Data</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>We access only the data necessary to provide our posting service</li>
+                <li>We use your profile information solely to identify your account within our application</li>
+                <li>We use posting permissions only to publish content you have approved</li>
+              </ul>
+
+              <h3 className="text-xl font-medium mt-4">Prohibited Activities</h3>
+              <p className="text-muted-foreground">
+                You agree not to use Linkedbot for:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Posting spam, misleading content, or content that violates LinkedIn's terms</li>
+                <li>Any form of automated engagement or interaction beyond posting</li>
+                <li>Scraping or extracting LinkedIn data</li>
+                <li>Circumventing LinkedIn's API rate limits or usage policies</li>
+              </ul>
+
+              <h3 className="text-xl font-medium mt-4">Token Security</h3>
+              <p className="text-muted-foreground">
+                Your LinkedIn access credentials are encrypted and stored securely. You are responsible for maintaining the security of your Linkedbot account, which provides access to your connected LinkedIn account.
+              </p>
+
+              <h3 className="text-xl font-medium mt-4">Disconnection and Data Removal</h3>
+              <p className="text-muted-foreground">
+                Upon disconnecting your LinkedIn account, we will delete your LinkedIn tokens and associated profile data from our systems. Scheduled posts that have not yet been published will be cancelled.
+              </p>
+
+              <h3 className="text-xl font-medium mt-4">Compliance with LinkedIn Policies</h3>
+              <p className="text-muted-foreground">
+                Your use of Linkedbot must comply with LinkedIn's User Agreement and Professional Community Policies. We reserve the right to suspend or terminate your access if you violate LinkedIn's terms through our service.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">8. Contact Us</h2>
               <p className="text-muted-foreground">
                 If you have any questions about these Terms, please contact us at legal@linkedbot.com.
               </p>
