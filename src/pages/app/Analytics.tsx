@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAgentAnalytics, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
@@ -108,6 +109,16 @@ const Analytics = () => {
             </div>
           </div>
         </div>
+
+        {/* Analytics Status Banner */}
+        <Alert className="border-primary/30 bg-primary/5">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertTitle>Engagement Data Coming Soon</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            LinkedIn analytics integration is in development. Currently showing agent activity data. 
+            Real engagement metrics (impressions, likes, comments) will be available once LinkedIn API access is approved.
+          </AlertDescription>
+        </Alert>
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -350,12 +361,15 @@ const Analytics = () => {
         {/* Bottom Section */}
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Best Posting Times */}
-          <Card>
+          <Card className="opacity-60">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                Best Posting Times
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Best Posting Times
+                </CardTitle>
+                <Badge variant="secondary">Coming Soon</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {bestPostingTimes.length > 0 ? (
@@ -390,12 +404,15 @@ const Analytics = () => {
           </Card>
 
           {/* Top Posts */}
-          <Card>
+          <Card className="opacity-60">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ArrowUpRight className="w-5 h-5 text-success" />
-                Top Performing Posts
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <ArrowUpRight className="w-5 h-5 text-success" />
+                  Top Performing Posts
+                </CardTitle>
+                <Badge variant="secondary">Coming Soon</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {topPosts.length > 0 ? (

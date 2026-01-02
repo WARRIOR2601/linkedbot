@@ -162,6 +162,16 @@ const LinkedInConnect = () => {
           </p>
         </div>
 
+        {/* API Status Banner */}
+        <Alert className="border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertTitle className="text-warning">Integration in Test Mode</AlertTitle>
+          <AlertDescription className="text-warning/80">
+            LinkedIn posting is currently in test mode pending API approval. You can connect your account, 
+            but automatic posting will be enabled once LinkedIn approves our API access.
+          </AlertDescription>
+        </Alert>
+
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
           <Card className={connectionStatus === "connected" ? "border-success/50" : ""}>
@@ -305,25 +315,35 @@ const LinkedInConnect = () => {
 
           {/* Features & Security */}
           <div className="space-y-6">
-            <Card>
+            <Card className="border-warning/30">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-primary" />
-                  What You Can Do
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-primary" />
+                    What You Can Do
+                  </CardTitle>
+                  <Badge variant="outline" className="text-warning border-warning">
+                    Test Mode
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
                   {[
-                    "Post content directly to LinkedIn",
-                    "Schedule posts for optimal times",
-                    "Automatic publishing at scheduled time",
-                    "Track post status (draft, scheduled, posted)",
-                    "Retry failed posts manually",
+                    { text: "Connect your LinkedIn account", available: true },
+                    { text: "Schedule posts for optimal times", available: true },
+                    { text: "Track post status (draft, scheduled)", available: true },
+                    { text: "Automatic posting to LinkedIn", available: false, note: "Pending approval" },
+                    { text: "Real-time analytics sync", available: false, note: "Coming soon" },
                   ].map((feature, index) => (
-                    <li key={index} className="flex items-center gap-3 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                      {feature}
+                    <li key={index} className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-3">
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${feature.available ? "text-success" : "text-muted-foreground"}`} />
+                        <span className={feature.available ? "" : "text-muted-foreground"}>{feature.text}</span>
+                      </span>
+                      {feature.note && (
+                        <Badge variant="secondary" className="text-xs">{feature.note}</Badge>
+                      )}
                     </li>
                   ))}
                 </ul>

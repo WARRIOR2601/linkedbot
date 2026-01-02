@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PublicRoute from "@/components/auth/PublicRoute";
+import AdminRoute from "@/components/auth/AdminRoute";
 import DiagnosticsPanel from "@/components/auth/DiagnosticsPanel";
 
 // Public Pages
@@ -78,12 +79,12 @@ const App = () => (
             <Route path="/app/create" element={<Navigate to="/app/agents/new" replace />} />
             <Route path="/app/train-ai" element={<Navigate to="/app/agents" replace />} />
 
-            {/* Admin Routes - Also protected */}
-            <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-            <Route path="/admin/subscriptions" element={<ProtectedRoute><AdminSubscriptions /></ProtectedRoute>} />
-            <Route path="/admin/ai-models" element={<ProtectedRoute><AdminAIModels /></ProtectedRoute>} />
-            <Route path="/admin/logs" element={<ProtectedRoute><AdminLogs /></ProtectedRoute>} />
+            {/* Admin Routes - Protected with admin role check */}
+            <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+            <Route path="/admin/subscriptions" element={<AdminRoute><AdminSubscriptions /></AdminRoute>} />
+            <Route path="/admin/ai-models" element={<AdminRoute><AdminAIModels /></AdminRoute>} />
+            <Route path="/admin/logs" element={<AdminRoute><AdminLogs /></AdminRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
