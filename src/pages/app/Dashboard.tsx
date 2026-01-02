@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip as ShadcnTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePosts } from "@/hooks/usePosts";
 import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -31,6 +33,7 @@ import {
   Users,
   Target,
   Settings,
+  Info,
 } from "lucide-react";
 import {
   AreaChart,
@@ -124,7 +127,7 @@ const Dashboard = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-8">
+      <TooltipProvider>
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -156,7 +159,24 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Trial/Subscription Banner */}
+        {/* LinkedIn Approval Status Banner */}
+        <Alert className="border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning/80 flex items-center justify-between">
+            <span>
+              <span className="font-medium">LinkedIn posting pending approval.</span> You can create and schedule posts. Publishing will be enabled after approval.
+            </span>
+            <ShadcnTooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 cursor-help shrink-0 ml-2" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>LinkedIn requires API approval for third-party posting. Your scheduled posts are saved and ready.</p>
+              </TooltipContent>
+            </ShadcnTooltip>
+          </AlertDescription>
+        </Alert>
+      <div className="space-y-8">
         {isTrialActive && (
           <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5">
             <CardContent className="p-4">
@@ -504,6 +524,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      </TooltipProvider>
     </AppLayout>
   );
 };

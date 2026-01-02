@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { usePosts, Post } from "@/hooks/usePosts";
 import { useAgents, AGENT_TYPES } from "@/hooks/useAgents";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +23,8 @@ import {
   Upload,
   X,
   Eye,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import {
   Dialog,
@@ -192,6 +196,7 @@ const ContentCalendar = () => {
 
   return (
     <AppLayout>
+      <TooltipProvider>
       <div className="space-y-6">
         {/* Hidden file input */}
         <input
@@ -243,6 +248,23 @@ const ContentCalendar = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Posting Status Banner */}
+        <Alert className="border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertTitle className="text-warning">Scheduled Posts — Pending LinkedIn Approval</AlertTitle>
+          <AlertDescription className="text-warning/80 flex items-center gap-2">
+            <span>Posts shown here are saved and scheduled. They will be published to LinkedIn once API approval is complete.</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 cursor-help shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>LinkedIn requires all third-party apps to be approved before posting. Your content is safely stored.</p>
+              </TooltipContent>
+            </Tooltip>
+          </AlertDescription>
+        </Alert>
 
         {/* Calendar Navigation */}
         <Card>
@@ -500,6 +522,7 @@ const ContentCalendar = () => {
           </DialogContent>
         </Dialog>
       </div>
+      </TooltipProvider>
     </AppLayout>
   );
 };

@@ -11,12 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScheduleDialog } from "@/components/posts/ScheduleDialog";
 import PostImageUpload from "@/components/posts/PostImageUpload";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Briefcase, Users, Smile, BookOpen, Rocket, MessageCircle,
   Sparkles, Wand2, Save, Calendar, RefreshCw, Copy, Check,
-  ChevronRight
+  ChevronRight, AlertTriangle, Info
 } from "lucide-react";
 import {
   Select,
@@ -180,6 +182,7 @@ const CreatePost = () => {
 
   return (
     <AppLayout>
+      <TooltipProvider>
       <div className="space-y-6 max-w-6xl mx-auto">
         <div>
           <h1 className="text-3xl font-bold">Create Post</h1>
@@ -187,6 +190,23 @@ const CreatePost = () => {
             Generate AI-powered LinkedIn content tailored to your brand
           </p>
         </div>
+
+        {/* Posting Status Banner */}
+        <Alert className="border-warning/50 bg-warning/10">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning/80 flex items-center gap-2">
+            <span className="font-medium">Posting pending approval:</span>
+            You can draft and schedule posts. Publishing to LinkedIn will be enabled after API approval.
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-4 w-4 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p>LinkedIn requires third-party apps to complete an approval process. Your posts are saved and will be ready to publish once approved.</p>
+              </TooltipContent>
+            </Tooltip>
+          </AlertDescription>
+        </Alert>
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left Column - Configuration */}
@@ -392,30 +412,44 @@ const CreatePost = () => {
                   <RefreshCw className={`mr-2 h-4 w-4 ${isGenerating ? "animate-spin" : ""}`} />
                   Regenerate
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={saveAsDraft}
-                  disabled={isSaving}
-                  className="flex-1"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Draft
-                </Button>
-                <Button
-                  onClick={() => setScheduleDialogOpen(true)}
-                  disabled={isSaving}
-                  className="flex-1"
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Schedule
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      onClick={saveAsDraft}
+                      disabled={isSaving}
+                      className="flex-1"
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Draft
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Save for later review. Post will not be published until approved.</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setScheduleDialogOpen(true)}
+                      disabled={isSaving}
+                      className="flex-1"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Schedule
+                      <ChevronRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Schedule for future publishing. Post will be queued pending LinkedIn API approval.</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
         </div>
       </div>
-
+      </TooltipProvider>
       <ScheduleDialog
         open={scheduleDialogOpen}
         onOpenChange={setScheduleDialogOpen}
