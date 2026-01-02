@@ -160,6 +160,15 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* What Are Agents - Explanation Card */}
+          <Alert className="border-primary/30 bg-primary/5">
+            <Bot className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-muted-foreground">
+              <span className="font-medium text-foreground">Your AI Agents are like content interns.</span>{" "}
+              Each agent follows your defined rules, tone, posting frequency, and boundaries. Agents draft posts and schedule them based on your preferences—they cannot act independently or perform any action without your explicit authorization.
+            </AlertDescription>
+          </Alert>
+
           {/* LinkedIn Approval Status Banner */}
           <Alert className="border-warning/50 bg-warning/10">
             <AlertTriangle className="h-4 w-4 text-warning" />

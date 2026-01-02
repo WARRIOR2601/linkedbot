@@ -40,7 +40,9 @@ import {
   Clock,
   MessageSquare,
   Image,
+  Info,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
 
 const TRAINING_TYPES = [
@@ -180,6 +182,14 @@ const AgentDetail = () => {
           </div>
         </div>
 
+        {/* Agent Explanation Banner */}
+        <Alert className="border-muted bg-muted/30">
+          <Info className="h-4 w-4" />
+          <AlertDescription className="text-muted-foreground text-sm">
+            This agent is an AI assistant that drafts posts based on your training and rules. It can only publish when LinkedIn is connected and you have given consent. Agents do not perform likes, comments, messages, or connection requests.
+          </AlertDescription>
+        </Alert>
+
         {/* Status Banner */}
         <Card className={agent.status === "active" ? "border-success/50 bg-success/5" : "border-warning/50 bg-warning/5"}>
           <CardContent className="p-4 flex items-center justify-between">
@@ -187,7 +197,7 @@ const AgentDetail = () => {
               {agent.status === "active" ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="font-medium text-success">Agent is active</span>
+                  <span className="font-medium text-success">Agent is active and requires LinkedIn connection to post</span>
                 </>
               ) : (
                 <>

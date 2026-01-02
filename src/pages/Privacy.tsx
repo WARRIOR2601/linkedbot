@@ -62,12 +62,34 @@ const Privacy = () => {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">6. LinkedIn Data Usage</h2>
+              <h2 className="text-2xl font-semibold">6. AI Agents & LinkedIn Data Usage</h2>
               <p className="text-muted-foreground">
-                When you connect your LinkedIn account to Linkedbot, we access and process certain LinkedIn data. This section explains our LinkedIn data practices.
+                Linkedbot uses AI agents to help you create and schedule LinkedIn content. This section explains how AI agents work and our LinkedIn data practices.
               </p>
+
+              <h3 className="text-xl font-medium mt-4">What Are AI Agents?</h3>
+              <p className="text-muted-foreground">
+                AI agents are content assistants trained by you to behave like a content intern. Each agent follows your defined rules, tone, posting frequency, and boundaries. Agents do not act independently and cannot perform any action without your prior authorization.
+              </p>
+
+              <h3 className="text-xl font-medium mt-4">What Agents Can Do</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Draft LinkedIn post content based on your preferences and training</li>
+                <li>Schedule posts according to rules you define</li>
+                <li>Publish posts only after LinkedIn account connection and your explicit consent</li>
+              </ul>
+
+              <h3 className="text-xl font-medium mt-4">What Agents Cannot Do</h3>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Like, comment on, or share other users' posts</li>
+                <li>Send direct messages or InMail</li>
+                <li>Send or accept connection requests</li>
+                <li>Perform any engagement automation</li>
+                <li>Scrape or extract LinkedIn data</li>
+                <li>Act without your explicit authorization</li>
+              </ul>
               
-              <h3 className="text-xl font-medium mt-4">Data We Access</h3>
+              <h3 className="text-xl font-medium mt-4">LinkedIn Data We Access</h3>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
                 <li>Your LinkedIn profile information (name, headline, profile photo)</li>
                 <li>Your LinkedIn member ID for account identification</li>
@@ -77,23 +99,23 @@ const Privacy = () => {
               <h3 className="text-xl font-medium mt-4">Why We Access This Data</h3>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
                 <li>To identify your LinkedIn account and display your profile information within our app</li>
-                <li>To publish posts to LinkedIn that you have explicitly reviewed and approved</li>
+                <li>To allow your AI agents to publish posts that you have explicitly reviewed and approved</li>
                 <li>To schedule posts for future publication at times you specify</li>
               </ul>
 
               <h3 className="text-xl font-medium mt-4">Token Storage and Security</h3>
               <p className="text-muted-foreground">
-                Your LinkedIn access tokens are encrypted and stored securely in our database. We use industry-standard encryption methods to protect your credentials. Tokens are only used to perform actions you have explicitly authorized.
+                Your LinkedIn access tokens are encrypted and stored securely in our database. We use industry-standard encryption methods to protect your credentials. Tokens are only used to perform actions you have explicitly authorized through your AI agents.
               </p>
 
               <h3 className="text-xl font-medium mt-4">Revoking Access</h3>
               <p className="text-muted-foreground">
-                You can disconnect your LinkedIn account at any time from the Settings page within Linkedbot. You can also revoke access directly from your LinkedIn account settings under "Permitted Services."
+                You can disconnect your LinkedIn account at any time from the Settings page within Linkedbot. When disconnected, all AI agents are immediately disabled and cannot post. You can also revoke access directly from your LinkedIn account settings under "Permitted Services."
               </p>
 
               <h3 className="text-xl font-medium mt-4">Data Deletion</h3>
               <p className="text-muted-foreground">
-                When you disconnect your LinkedIn account, we immediately delete your LinkedIn access tokens and refresh tokens from our systems. Your LinkedIn profile information stored in our database is also removed.
+                When you disconnect your LinkedIn account, we immediately delete your LinkedIn access tokens and refresh tokens from our systems. Your LinkedIn profile information stored in our database is also removed. AI agents remain configured but are disabled until you reconnect.
               </p>
 
               <h3 className="text-xl font-medium mt-4">What We Do Not Do</h3>
@@ -103,6 +125,7 @@ const Privacy = () => {
                 <li>We do not post content without your explicit review and approval</li>
                 <li>We do not share your LinkedIn data with third parties</li>
                 <li>We do not access your LinkedIn connections, messages, or other private data</li>
+                <li>We do not allow AI agents to bypass your control or consent</li>
               </ul>
             </div>
 

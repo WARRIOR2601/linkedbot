@@ -91,6 +91,43 @@ const Agents = () => {
           )}
         </div>
 
+        {/* What Agents Do / Don't Do */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Bot className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <p className="font-medium text-sm">What are AI Agents?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Agents are AI assistants trained by you to behave like a content intern. Each agent follows your defined rules, tone, posting frequency, and boundaries. They cannot act independently and cannot perform any action without your prior authorization.
+                  </p>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <p className="text-xs font-medium text-success mb-1">✓ What agents can do:</p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5">
+                      <li>• Draft LinkedIn post content</li>
+                      <li>• Schedule posts based on your rules</li>
+                      <li>• Post only after your LinkedIn connection & consent</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-destructive mb-1">✗ What agents cannot do:</p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5">
+                      <li>• Like, comment, or send messages</li>
+                      <li>• Send connection requests</li>
+                      <li>• Perform engagement automation or data scraping</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Agent Slots Progress */}
         <Card className="border-muted">
           <CardContent className="p-4">
@@ -256,6 +293,13 @@ const AgentCard = ({
           <div className="p-2 rounded-lg bg-destructive/10 text-sm text-destructive">
             <p className="font-medium">Agent needs attention</p>
             <p className="text-xs">Check settings and try reactivating</p>
+          </div>
+        )}
+
+        {/* Active Agent - LinkedIn Dependency */}
+        {status === "active" && (
+          <div className="p-2 rounded-lg bg-success/5 border border-success/20 text-xs text-muted-foreground">
+            Requires LinkedIn connection to post
           </div>
         )}
 

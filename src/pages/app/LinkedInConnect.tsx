@@ -24,6 +24,7 @@ import {
   Info,
   Zap,
   Loader2,
+  Bot,
 } from "lucide-react";
 
 const LinkedInConnect = () => {
@@ -162,14 +163,24 @@ const LinkedInConnect = () => {
           </p>
         </div>
 
-        {/* User Consent & Control Notice */}
+        {/* User Consent & Agent Control Notice */}
         <Alert className="border-primary/50 bg-primary/5">
           <Shield className="h-4 w-4 text-primary" />
           <AlertTitle>You're Always in Control</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            By connecting your LinkedIn account, you authorize Linkedbot to post content on your behalf. 
-            You maintain full control: review all posts before publishing, pause posting at any time, 
-            and disconnect your account whenever you choose. We will never post without your explicit approval.
+            By connecting LinkedIn, you explicitly allow your AI agents to publish posts on your behalf using official LinkedIn APIs. 
+            You can pause agents or disconnect LinkedIn at any time. Agents are disabled if LinkedIn is disconnected and cannot bypass your control.
+            We will never post without your explicit review and approval.
+          </AlertDescription>
+        </Alert>
+
+        {/* Agent Dependency Notice */}
+        <Alert className="border-muted bg-muted/30">
+          <Bot className="h-4 w-4" />
+          <AlertTitle>How AI Agents Work with LinkedIn</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            AI agents are content assistants that draft and schedule posts based on your preferences. They can only publish content when your LinkedIn account is connected and you have granted consent. 
+            Agents do not perform likes, comments, messages, connection requests, or any engagement automation.
           </AlertDescription>
         </Alert>
 

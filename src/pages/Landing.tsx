@@ -18,23 +18,23 @@ import {
 const features = [
   {
     icon: Sparkles,
-    title: "AI-Powered Content",
-    description: "Generate engaging posts with our advanced AI that understands your brand voice.",
+    title: "AI Content Assistants",
+    description: "Train AI agents to draft posts in your voice. You review and approve everything before publishing.",
   },
   {
     icon: Calendar,
-    title: "Smart Scheduling",
-    description: "Schedule posts at optimal times for maximum engagement and reach.",
+    title: "User-Controlled Scheduling",
+    description: "Schedule posts at times you choose. Pause or cancel anytime—you're always in control.",
   },
   {
     icon: BarChart3,
-    title: "Deep Analytics",
-    description: "Track performance metrics and understand what resonates with your audience.",
+    title: "Performance Insights",
+    description: "Track your content performance and understand what resonates with your audience.",
   },
   {
     icon: Target,
-    title: "Audience Targeting",
-    description: "Craft content that speaks directly to your ideal LinkedIn connections.",
+    title: "Professional Content Support",
+    description: "AI agents help craft content that speaks to your ideal LinkedIn audience.",
   },
 ];
 
@@ -42,17 +42,17 @@ const steps = [
   {
     number: "01",
     title: "Connect LinkedIn",
-    description: "Securely link your LinkedIn profile in seconds.",
+    description: "Securely link your LinkedIn profile with your consent.",
   },
   {
     number: "02",
-    title: "Generate Content",
-    description: "Use AI to create compelling posts tailored to your goals.",
+    title: "Train Your Agent",
+    description: "Create an AI assistant that drafts posts in your voice and style.",
   },
   {
     number: "03",
-    title: "Schedule & Grow",
-    description: "Set it and forget it. Watch your engagement soar.",
+    title: "Review & Publish",
+    description: "Approve every post before it goes live. You're always in control.",
   },
 ];
 
@@ -89,8 +89,8 @@ const Landing = () => {
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.2s" }}>
-              Create engaging content, schedule posts, and analyze performance — all powered by AI. 
-              Build your personal brand with content you control.
+              AI assistants that draft content based on your voice and rules. 
+              You review and approve every post—always in control of your personal brand.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.3s" }}>

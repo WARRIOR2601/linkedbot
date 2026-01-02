@@ -58,11 +58,11 @@ const Settings = () => {
 
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>Your Data & Privacy</AlertTitle>
+              <AlertTitle>AI Agents & LinkedIn Consent</AlertTitle>
               <AlertDescription className="text-muted-foreground">
-                You maintain full control over your LinkedIn connection. You can disconnect at any time, 
-                pause posting, and we never post content without your explicit review and approval. 
-                All scheduled posts can be edited or cancelled before publishing.
+                By connecting LinkedIn, you explicitly allow your AI agents to publish posts on your behalf using official LinkedIn APIs.
+                You can pause agents or disconnect LinkedIn at any time. Agents are disabled if LinkedIn is disconnected and cannot bypass your control.
+                We never post content without your explicit review and approval.
               </AlertDescription>
             </Alert>
 
