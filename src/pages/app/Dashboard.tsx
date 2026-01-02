@@ -128,55 +128,55 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <TooltipProvider>
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {displayName}!</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" asChild>
-              <Link to="/app/calendar">
-                <Calendar className="w-4 h-4 mr-2" />
-                View Calendar
-              </Link>
-            </Button>
-            {canCreateAgent(agents.length) ? (
-              <Button variant="hero" asChild>
-                <Link to="/app/agents/new">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Agent
+        <div className="space-y-8">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground">Welcome back, {displayName}!</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" asChild>
+                <Link to="/app/calendar">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  View Calendar
                 </Link>
               </Button>
-            ) : (
-              <Button variant="hero" asChild>
-                <Link to="/app/billing">
-                  <Crown className="w-4 h-4 mr-2" />
-                  Upgrade Plan
-                </Link>
-              </Button>
-            )}
+              {canCreateAgent(agents.length) ? (
+                <Button variant="hero" asChild>
+                  <Link to="/app/agents/new">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Agent
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="hero" asChild>
+                  <Link to="/app/billing">
+                    <Crown className="w-4 h-4 mr-2" />
+                    Upgrade Plan
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* LinkedIn Approval Status Banner */}
-        <Alert className="border-warning/50 bg-warning/10">
-          <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertDescription className="text-warning/80 flex items-center justify-between">
-            <span>
-              <span className="font-medium">LinkedIn posting pending approval.</span> You can create and schedule posts. Publishing will be enabled after approval.
-            </span>
-            <ShadcnTooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 cursor-help shrink-0 ml-2" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>LinkedIn requires API approval for third-party posting. Your scheduled posts are saved and ready.</p>
-              </TooltipContent>
-            </ShadcnTooltip>
-          </AlertDescription>
-        </Alert>
-      <div className="space-y-8">
+          {/* LinkedIn Approval Status Banner */}
+          <Alert className="border-warning/50 bg-warning/10">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-warning/80 flex items-center justify-between">
+              <span>
+                <span className="font-medium">LinkedIn posting pending approval.</span> You can create and schedule posts. Publishing will be enabled after approval.
+              </span>
+              <ShadcnTooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 cursor-help shrink-0 ml-2" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>LinkedIn requires API approval for third-party posting. Your scheduled posts are saved and ready.</p>
+                </TooltipContent>
+              </ShadcnTooltip>
+            </AlertDescription>
+          </Alert>
         {isTrialActive && (
           <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5">
             <CardContent className="p-4">
