@@ -68,10 +68,10 @@ const Agents = () => {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Bot className="w-8 h-8" />
-              Agents
+              AI Agents
             </h1>
             <p className="text-muted-foreground">
-              Your autonomous posting assistants
+              AI assistants that draft and schedule posts based on your preferences
             </p>
           </div>
           {canCreateAgent(agents.length) ? (
@@ -133,8 +133,8 @@ const Agents = () => {
               </div>
               <h2 className="text-2xl font-bold mb-2">No Agents Yet</h2>
               <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                Create your first agent to start automating your LinkedIn presence.
-                Agents write, schedule, and post content autonomously.
+                Create your first AI agent to help draft and schedule LinkedIn posts.
+                Agents are AI assistants that create content based on rules you define.
               </p>
               <Button variant="hero" asChild>
                 <Link to="/app/agents/new">
@@ -246,8 +246,8 @@ const AgentCard = ({
         {/* Draft Warning */}
         {status === "draft" && (
           <div className="p-2 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            <p className="font-medium">Training not complete</p>
-            <p className="text-xs">Activate to enable autonomous posting</p>
+            <p className="font-medium">Setup not complete</p>
+            <p className="text-xs">Complete setup to enable content creation</p>
           </div>
         )}
 

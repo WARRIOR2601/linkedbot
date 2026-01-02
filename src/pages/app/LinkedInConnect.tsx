@@ -158,17 +158,28 @@ const LinkedInConnect = () => {
         <div>
           <h1 className="text-3xl font-bold">LinkedIn Connection</h1>
           <p className="text-muted-foreground mt-1">
-            Connect your LinkedIn account to publish posts directly
+            Connect your LinkedIn account to manage your posting workflow
           </p>
         </div>
+
+        {/* User Consent & Control Notice */}
+        <Alert className="border-primary/50 bg-primary/5">
+          <Shield className="h-4 w-4 text-primary" />
+          <AlertTitle>You're Always in Control</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            By connecting your LinkedIn account, you authorize Linkedbot to post content on your behalf. 
+            You maintain full control: review all posts before publishing, pause posting at any time, 
+            and disconnect your account whenever you choose. We will never post without your explicit approval.
+          </AlertDescription>
+        </Alert>
 
         {/* API Status Banner */}
         <Alert className="border-warning/50 bg-warning/10">
           <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertTitle className="text-warning">Integration in Test Mode</AlertTitle>
+          <AlertTitle className="text-warning">Posting Pending LinkedIn Approval</AlertTitle>
           <AlertDescription className="text-warning/80">
-            LinkedIn posting is currently in test mode pending API approval. You can connect your account, 
-            but automatic posting will be enabled once LinkedIn approves our API access.
+            LinkedIn posting is currently awaiting API approval. You can connect your account and create posts, 
+            but publishing to LinkedIn will be enabled once LinkedIn approves our application.
           </AlertDescription>
         </Alert>
 
@@ -181,10 +192,15 @@ const LinkedInConnect = () => {
                   <Linkedin className="w-7 h-7 text-white" />
                 </div>
                 {connectionStatus === "connected" && (
-                  <Badge variant="default" className="bg-success">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Connected
-                  </Badge>
+                  <div className="flex flex-col gap-1 items-end">
+                    <Badge variant="default" className="bg-success">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Connected
+                    </Badge>
+                    <Badge variant="outline" className="text-warning border-warning text-xs">
+                      Posting pending approval
+                    </Badge>
+                  </div>
                 )}
                 {connectionStatus === "expired" && (
                   <Badge variant="destructive">
@@ -199,10 +215,10 @@ const LinkedInConnect = () => {
               <CardTitle className="mt-4">LinkedIn Account</CardTitle>
               <CardDescription>
                 {connectionStatus === "connected"
-                  ? "Your account is connected and ready to post"
+                  ? "Your account is connected. Posting will be enabled after LinkedIn API approval."
                   : connectionStatus === "expired"
                   ? "Your connection has expired. Please reconnect."
-                  : "Connect your LinkedIn to start publishing"}
+                  : "Connect your LinkedIn to manage your content workflow"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -232,11 +248,17 @@ const LinkedInConnect = () => {
                   {/* Connection Info */}
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Status</span>
+                      <span className="text-muted-foreground">Connection</span>
                       <span className="flex items-center gap-2 text-success">
                         <CheckCircle2 className="w-4 h-4" />
                         Active
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-b border-border">
+                      <span className="text-muted-foreground">Posting Status</span>
+                      <Badge variant="outline" className="text-warning border-warning">
+                        Pending Approval
+                      </Badge>
                     </div>
                     {account.connected_at && (
                       <div className="flex items-center justify-between py-2 border-b border-border">
@@ -299,13 +321,17 @@ const LinkedInConnect = () => {
                         <Info className="h-4 w-4" />
                         <AlertTitle>Connect Your LinkedIn</AlertTitle>
                         <AlertDescription>
-                          Connect your LinkedIn account to enable automatic posting by your AI agents.
+                          Connect your LinkedIn account to draft and schedule posts. You'll review and approve all content before it's published.
                         </AlertDescription>
                       </Alert>
                       <Button onClick={handleConnect} className="w-full bg-[#0A66C2] hover:bg-[#004182]">
                         <Linkedin className="w-4 h-4 mr-2" />
                         Connect LinkedIn Account
                       </Button>
+                      <p className="text-xs text-center text-muted-foreground">
+                        By connecting, you agree to let Linkedbot access your LinkedIn profile for posting purposes. 
+                        You can revoke access at any time.
+                      </p>
                     </>
                   )}
                 </div>
@@ -331,10 +357,12 @@ const LinkedInConnect = () => {
                 <ul className="space-y-3">
                   {[
                     { text: "Connect your LinkedIn account", available: true },
+                    { text: "Draft and review posts before publishing", available: true },
                     { text: "Schedule posts for optimal times", available: true },
-                    { text: "Track post status (draft, scheduled)", available: true },
-                    { text: "Automatic posting to LinkedIn", available: false, note: "Pending approval" },
-                    { text: "Real-time analytics sync", available: false, note: "Coming soon" },
+                    { text: "Pause or cancel scheduled posts anytime", available: true },
+                    { text: "Disconnect your account at any time", available: true },
+                    { text: "Publish posts to LinkedIn", available: false, note: "Pending approval" },
+                    { text: "Analytics sync", available: false, note: "After approval" },
                   ].map((feature, index) => (
                     <li key={index} className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-3">
@@ -369,11 +397,15 @@ const LinkedInConnect = () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>You can revoke access at any time</span>
+                    <span>You can disconnect and revoke access at any time</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <span>We only request permissions needed for posting</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                    <span>No content is posted without your review and approval</span>
                   </li>
                 </ul>
               </CardContent>

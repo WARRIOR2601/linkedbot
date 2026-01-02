@@ -865,15 +865,16 @@ const CreateAgent = () => {
                 </div>
               </div>
 
-              {/* Autonomous Behavior Notice */}
+              {/* Agent Behavior Notice */}
               <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
                 <h4 className="font-medium mb-2 flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  Autonomous Posting
+                  About AI Agents
                 </h4>
                 <p className="text-sm text-muted-foreground">
-                  Once created, this agent will <strong>automatically</strong> create and schedule posts 
-                  based on your configuration. You can pause or modify the agent at any time.
+                  Agents are AI assistants that draft and schedule posts based on user-defined rules. 
+                  All content is created according to your preferences and schedule settings. 
+                  You can review, edit, pause, or delete posts at any time before they are published.
                 </p>
               </div>
             </CardContent>

@@ -44,7 +44,7 @@ export const PLAN_DETAILS: Record<SubscriptionPlan, PlanDetails> = {
     maxAgents: 1,
     features: [
       "1 AI Agent",
-      "Limited autonomous posting (14 days)",
+      "Draft and schedule posts (14 days)",
       "Basic analytics",
       "Limited image generation",
       "Linkedbot branding",
@@ -62,7 +62,7 @@ export const PLAN_DETAILS: Record<SubscriptionPlan, PlanDetails> = {
     maxAgents: 5,
     features: [
       "Up to 5 AI Agents",
-      "Unlimited autonomous posting",
+      "Unlimited post scheduling",
       "Full analytics (agent + tag + image)",
       "Unlimited image generation",
       "Priority agent execution",
