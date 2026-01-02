@@ -1,12 +1,18 @@
+import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { User, Bell, Palette, Shield } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLinkedInAccount } from "@/hooks/useLinkedInAccount";
+import { User, Bell, Palette, Shield, Linkedin, Info, ExternalLink } from "lucide-react";
 
 const Settings = () => {
+  const { account, connectionStatus } = useLinkedInAccount();
+
   return (
     <AppLayout>
       <div className="space-y-8 max-w-4xl">
@@ -14,6 +20,61 @@ const Settings = () => {
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">Manage your account preferences</p>
         </div>
+
+        {/* LinkedIn Connection & Consent */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Linkedin className="w-5 h-5 text-[#0A66C2]" />
+              LinkedIn Connection
+            </CardTitle>
+            <CardDescription>Manage your LinkedIn account connection and posting preferences</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+              <div>
+                <p className="font-medium">Connection Status</p>
+                <p className="text-sm text-muted-foreground">
+                  {connectionStatus === "connected" 
+                    ? `Connected as ${account?.profile_name || "LinkedIn User"}`
+                    : connectionStatus === "expired"
+                    ? "Connection expired - please reconnect"
+                    : "Not connected"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {connectionStatus === "connected" && (
+                  <Badge variant="outline" className="text-warning border-warning">
+                    Posting pending approval
+                  </Badge>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/app/linkedin">
+                    {connectionStatus === "connected" ? "Manage" : "Connect"}
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Your Data & Privacy</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                You maintain full control over your LinkedIn connection. You can disconnect at any time, 
+                pause posting, and we never post content without your explicit review and approval. 
+                All scheduled posts can be edited or cancelled before publishing.
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium">Post Review Requirement</p>
+                <p className="text-xs text-muted-foreground">All posts require your approval before publishing</p>
+              </div>
+              <Badge variant="secondary">Always On</Badge>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

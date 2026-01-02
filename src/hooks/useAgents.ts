@@ -204,7 +204,7 @@ export function useAgents() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agents"] });
-      toast.success("Agent activated - autonomous posting enabled!");
+      toast.success("Agent activated - ready to create content!");
     },
     onError: (error) => {
       toast.error("Failed to activate agent: " + error.message);

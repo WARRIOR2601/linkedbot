@@ -79,18 +79,18 @@ const Landing = () => {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8 animate-fade-in">
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">AI-Powered LinkedIn Growth</span>
+              <span className="text-sm font-medium">AI-Powered LinkedIn Content</span>
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight animate-fade-in" style={{ animationDelay: "0.1s" }}>
               Grow Your LinkedIn
               <br />
-              <span className="text-gradient">On Autopilot</span>
+              <span className="text-gradient">With Smart Content</span>
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: "0.2s" }}>
               Create engaging content, schedule posts, and analyze performance — all powered by AI. 
-              Build your personal brand while you sleep.
+              Build your personal brand with content you control.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: "0.3s" }}>
@@ -125,7 +125,7 @@ const Landing = () => {
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Everything You Need to
-              <span className="text-gradient"> Dominate LinkedIn</span>
+              <span className="text-gradient"> Succeed on LinkedIn</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Our suite of AI tools helps you create, schedule, and analyze your LinkedIn content like a pro.

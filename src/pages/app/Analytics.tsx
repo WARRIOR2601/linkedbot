@@ -111,12 +111,12 @@ const Analytics = () => {
         </div>
 
         {/* Analytics Status Banner */}
-        <Alert className="border-primary/30 bg-primary/5">
-          <Info className="h-4 w-4 text-primary" />
-          <AlertTitle>Engagement Data Coming Soon</AlertTitle>
+        <Alert className="border-warning/30 bg-warning/5">
+          <Info className="h-4 w-4 text-warning" />
+          <AlertTitle className="text-warning">Analytics Available After LinkedIn Approval</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            LinkedIn analytics integration is in development. Currently showing agent activity data. 
-            Real engagement metrics (impressions, likes, comments) will be available once LinkedIn API access is approved.
+            Full LinkedIn engagement analytics (impressions, likes, comments) will be available once LinkedIn approves our API access. 
+            Currently showing agent activity and post scheduling data only.
           </AlertDescription>
         </Alert>
 
