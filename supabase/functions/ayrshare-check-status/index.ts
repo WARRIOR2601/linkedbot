@@ -59,22 +59,23 @@ serve(async (req) => {
       });
     }
 
-    // Check connected platforms from Ayrshare using correct endpoint
+    // Check connected platforms from Ayrshare using the profiles endpoint
     console.log("Checking Ayrshare profile status for key:", account.ayrshare_profile_key);
-    const profileResponse = await fetch("https://app.ayrshare.com/api/user", {
+    
+    // Use GET /api/profiles to get all profiles, then find ours
+    const profileResponse = await fetch("https://app.ayrshare.com/api/profiles", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${ayrshareApiKey}`,
-        "Profile-Key": account.ayrshare_profile_key,
       },
     });
 
     const profileResponseText = await profileResponse.text();
-    console.log("Ayrshare user response status:", profileResponse.status);
-    console.log("Ayrshare user response:", profileResponseText);
+    console.log("Ayrshare profiles response status:", profileResponse.status);
+    console.log("Ayrshare profiles response:", profileResponseText);
 
     if (!profileResponse.ok) {
-      console.error("Failed to get Ayrshare profile status:", profileResponseText);
+      console.error("Failed to get Ayrshare profiles:", profileResponseText);
       return new Response(JSON.stringify({ 
         connected: account.ayrshare_connected || false,
         hasProfile: true 
@@ -83,11 +84,11 @@ serve(async (req) => {
       });
     }
 
-    let profileData;
+    let profilesData;
     try {
-      profileData = JSON.parse(profileResponseText);
+      profilesData = JSON.parse(profileResponseText);
     } catch (e) {
-      console.error("Failed to parse profile response");
+      console.error("Failed to parse profiles response");
       return new Response(JSON.stringify({ 
         connected: account.ayrshare_connected || false,
         hasProfile: true 
@@ -96,7 +97,11 @@ serve(async (req) => {
       });
     }
 
-    const activeSocialAccounts = profileData.activeSocialAccounts || [];
+    // Find the user's profile by profileKey
+    const profiles = profilesData.profiles || [];
+    const userProfile = profiles.find((p: any) => p.profileKey === account.ayrshare_profile_key);
+    
+    const activeSocialAccounts = userProfile?.activeSocialAccounts || [];
     const linkedinConnected = activeSocialAccounts.includes("linkedin");
 
     // Update connection status in database if changed
