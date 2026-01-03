@@ -24,20 +24,11 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const ayrshareApiKey = Deno.env.get("AYRSHARE_API_KEY");
-    const ayrsharePrivateKey = Deno.env.get("AYRSHARE_PRIVATE_KEY");
     const ayrshareDomain = Deno.env.get("AYRSHARE_DOMAIN");
 
     if (!ayrshareApiKey) {
       console.error("AYRSHARE_API_KEY not configured");
       return new Response(JSON.stringify({ error: "Ayrshare API key not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!ayrsharePrivateKey) {
-      console.error("AYRSHARE_PRIVATE_KEY not configured");
-      return new Response(JSON.stringify({ error: "Ayrshare private key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -66,16 +57,12 @@ serve(async (req) => {
 
     console.log("Processing Ayrshare connection for user:", user.id);
 
-    // Get the request origin for redirect URL
-    const origin = req.headers.get("origin") || "https://linkedbot.lovable.app";
-    const redirectUrl = `${origin}/app/linkedin?status=success`;
-
     // Check if user already has an Ayrshare profile
     const { data: existingAccount } = await supabase
       .from("linkedin_accounts")
       .select("ayrshare_profile_key")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     let profileKey = existingAccount?.ayrshare_profile_key;
 
@@ -83,7 +70,7 @@ serve(async (req) => {
       // Create new Ayrshare profile for this user
       console.log("Creating new Ayrshare profile for user:", user.id);
       
-      const profileResponse = await fetch("https://api.ayrshare.com/api/profiles/profile", {
+      const profileResponse = await fetch("https://app.ayrshare.com/api/profiles/create-profile", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${ayrshareApiKey}`,
@@ -94,16 +81,32 @@ serve(async (req) => {
         }),
       });
 
+      const profileResponseText = await profileResponse.text();
+      console.log("Ayrshare create-profile response status:", profileResponse.status);
+      console.log("Ayrshare create-profile response:", profileResponseText);
+
       if (!profileResponse.ok) {
-        const errorText = await profileResponse.text();
-        console.error("Ayrshare profile creation error:", errorText);
-        return new Response(JSON.stringify({ error: "Failed to create Ayrshare profile", details: errorText }), {
+        console.error("Ayrshare profile creation error:", profileResponseText);
+        return new Response(JSON.stringify({ 
+          error: "Failed to create Ayrshare profile", 
+          details: profileResponseText 
+        }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const profileData = await profileResponse.json();
+      let profileData;
+      try {
+        profileData = JSON.parse(profileResponseText);
+      } catch (e) {
+        console.error("Failed to parse profile response:", e);
+        return new Response(JSON.stringify({ error: "Invalid response from Ayrshare" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       profileKey = profileData.profileKey;
       console.log("Ayrshare profile created with key:", profileKey);
 
@@ -125,42 +128,40 @@ serve(async (req) => {
       }
     }
 
-    // Generate JWT link for LinkedIn connection
-    console.log("Generating JWT for profile:", profileKey);
+    // Generate JWT link for LinkedIn connection using Ayrshare's generateJWT endpoint
+    const redirectUrl = `${ayrshareDomain}/app/linkedin`;
+    console.log("Generating JWT for profile:", profileKey, "with redirect:", redirectUrl);
     
-    const linkResponse = await fetch("https://api.ayrshare.com/api/profiles/generateJWT", {
+    const jwtResponse = await fetch("https://app.ayrshare.com/api/generateJWT", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${ayrshareApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        domain: ayrshareDomain,
-        privateKey: ayrsharePrivateKey,
         profileKey: profileKey,
         redirect: redirectUrl,
-        allowedSocial: ["linkedin"],
       }),
     });
 
-    const linkResponseText = await linkResponse.text();
-    console.log("Ayrshare JWT response status:", linkResponse.status);
-    console.log("Ayrshare JWT response:", linkResponseText);
+    const jwtResponseText = await jwtResponse.text();
+    console.log("Ayrshare generateJWT response status:", jwtResponse.status);
+    console.log("Ayrshare generateJWT response:", jwtResponseText);
 
-    if (!linkResponse.ok) {
-      console.error("Ayrshare JWT generation error:", linkResponseText);
+    if (!jwtResponse.ok) {
+      console.error("Ayrshare generateJWT error:", jwtResponseText);
       return new Response(JSON.stringify({ 
         error: "Failed to generate connection link", 
-        details: linkResponseText 
+        details: jwtResponseText 
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let linkData;
+    let jwtData;
     try {
-      linkData = JSON.parse(linkResponseText);
+      jwtData = JSON.parse(jwtResponseText);
     } catch (e) {
       console.error("Failed to parse JWT response:", e);
       return new Response(JSON.stringify({ error: "Invalid response from Ayrshare" }), {
@@ -173,7 +174,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       profileKey,
-      linkUrl: linkData.url 
+      linkUrl: jwtData.url 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
