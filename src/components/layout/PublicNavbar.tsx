@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Linkedin } from "lucide-react";
+import linkedbotLogo from "@/assets/linkedbot-logo.png";
 
 const PublicNavbar = () => {
   const location = useLocation();
@@ -15,9 +15,7 @@ const PublicNavbar = () => {
       <div className="container mx-auto px-6">
         <nav className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Linkedin className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={linkedbotLogo} alt="Linkedbot" className="w-8 h-8 rounded-lg object-contain" />
             <span className="text-xl font-bold text-gradient">Linkedbot</span>
           </Link>
 
