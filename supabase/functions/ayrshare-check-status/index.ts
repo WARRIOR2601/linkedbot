@@ -44,13 +44,13 @@ serve(async (req) => {
     }
 
     // Get user's Ayrshare profile key
-    const { data: account, error: accountError } = await supabase
+    const { data: account } = await supabase
       .from("linkedin_accounts")
       .select("ayrshare_profile_key, ayrshare_connected")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (accountError || !account?.ayrshare_profile_key) {
+    if (!account?.ayrshare_profile_key) {
       return new Response(JSON.stringify({ 
         connected: false,
         hasProfile: false 
@@ -59,16 +59,22 @@ serve(async (req) => {
       });
     }
 
-    // Check connected platforms from Ayrshare
-    const profileResponse = await fetch(`https://api.ayrshare.com/api/profiles/${account.ayrshare_profile_key}`, {
+    // Check connected platforms from Ayrshare using correct endpoint
+    console.log("Checking Ayrshare profile status for key:", account.ayrshare_profile_key);
+    const profileResponse = await fetch("https://app.ayrshare.com/api/user", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${ayrshareApiKey}`,
+        "Profile-Key": account.ayrshare_profile_key,
       },
     });
 
+    const profileResponseText = await profileResponse.text();
+    console.log("Ayrshare user response status:", profileResponse.status);
+    console.log("Ayrshare user response:", profileResponseText);
+
     if (!profileResponse.ok) {
-      console.error("Failed to get Ayrshare profile status");
+      console.error("Failed to get Ayrshare profile status:", profileResponseText);
       return new Response(JSON.stringify({ 
         connected: account.ayrshare_connected || false,
         hasProfile: true 
@@ -77,7 +83,19 @@ serve(async (req) => {
       });
     }
 
-    const profileData = await profileResponse.json();
+    let profileData;
+    try {
+      profileData = JSON.parse(profileResponseText);
+    } catch (e) {
+      console.error("Failed to parse profile response");
+      return new Response(JSON.stringify({ 
+        connected: account.ayrshare_connected || false,
+        hasProfile: true 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const activeSocialAccounts = profileData.activeSocialAccounts || [];
     const linkedinConnected = activeSocialAccounts.includes("linkedin");
 
