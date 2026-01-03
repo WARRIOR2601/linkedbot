@@ -11,6 +11,7 @@ import {
   Bot,
   Plus,
 } from "lucide-react";
+import linkedbotLogo from "@/assets/linkedbot-logo.png";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -58,9 +59,7 @@ const AppSidebar = () => {
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
           <Link to="/app/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <Linkedin className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src={linkedbotLogo} alt="Linkedbot" className="w-8 h-8 rounded-lg object-contain" />
             <span className="text-lg font-bold text-gradient">Linkedbot</span>
           </Link>
         )}
