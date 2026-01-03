@@ -6,6 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Simple encryption using Web Crypto API
+async function encryptToken(token: string, secretKey: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secretKey.slice(0, 32).padEnd(32, '0')),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    new TextEncoder().encode(token)
+  );
+  
+  // Convert to hex strings for storage
+  const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+  const encryptedHex = Array.from(new Uint8Array(encrypted)).map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return `${ivHex}:${encryptedHex}`;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -17,6 +41,7 @@ serve(async (req) => {
     const linkedinClientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const tokenEncryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY") || supabaseServiceKey;
     
     if (!linkedinClientId || !linkedinClientSecret) {
       console.error("LinkedIn OAuth credentials not configured");
@@ -28,7 +53,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { code, redirectUri, userId } = await req.json();
+    const { code, redirectUri, userId, state } = await req.json();
 
     if (!code || !redirectUri || !userId) {
       return new Response(
@@ -37,6 +62,8 @@ serve(async (req) => {
       );
     }
 
+    // Log state for debugging (state validation happens on client side)
+    console.log("OAuth callback received with state:", state ? "present" : "missing");
     console.log("Exchanging LinkedIn authorization code for tokens...");
 
     // Exchange authorization code for access token
@@ -99,6 +126,14 @@ serve(async (req) => {
     const tokenExpiresAt = new Date();
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + expiresIn);
 
+    // Encrypt tokens before storing
+    const encryptedAccessToken = await encryptToken(accessToken, tokenEncryptionKey);
+    const encryptedRefreshToken = refreshToken 
+      ? await encryptToken(refreshToken, tokenEncryptionKey) 
+      : null;
+
+    console.log("Tokens encrypted successfully");
+
     // Upsert LinkedIn account in database
     const { data: accountData, error: upsertError } = await supabase
       .from("linkedin_accounts")
@@ -108,8 +143,8 @@ serve(async (req) => {
         profile_name: profileName,
         profile_photo_url: profilePhotoUrl,
         headline: email, // Store email in headline for now
-        access_token_encrypted: accessToken, // In production, encrypt this!
-        refresh_token_encrypted: refreshToken,
+        access_token_encrypted: encryptedAccessToken,
+        refresh_token_encrypted: encryptedRefreshToken,
         token_expires_at: tokenExpiresAt.toISOString(),
         is_connected: true,
         connected_at: new Date().toISOString(),
@@ -125,7 +160,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("LinkedIn account saved successfully");
+    console.log("LinkedIn account saved successfully with encrypted tokens");
 
     return new Response(
       JSON.stringify({ 

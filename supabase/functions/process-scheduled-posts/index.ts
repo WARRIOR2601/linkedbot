@@ -8,6 +8,39 @@ const corsHeaders = {
 
 const MAX_RETRIES = 2;
 
+// Simple encryption/decryption using Web Crypto API
+async function decryptToken(encryptedData: string, secretKey: string): Promise<string> {
+  try {
+    const [ivHex, encryptedHex] = encryptedData.split(':');
+    if (!ivHex || !encryptedHex) {
+      // If not encrypted format, return as-is (for migration)
+      return encryptedData;
+    }
+    
+    const iv = new Uint8Array(ivHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    const encrypted = new Uint8Array(encryptedHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secretKey.slice(0, 32).padEnd(32, '0')),
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      keyMaterial,
+      encrypted
+    );
+    
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    // If decryption fails, assume token is in plain text (legacy)
+    return encryptedData;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -17,6 +50,52 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const cronSecret = Deno.env.get("CRON_SECRET_KEY");
+    const tokenEncryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY") || supabaseServiceKey;
+    
+    // Verify authentication - either cron secret or valid admin JWT
+    const authHeader = req.headers.get("authorization");
+    
+    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+      // Valid cron secret - allow access
+      console.log("Authenticated via cron secret");
+    } else if (authHeader) {
+      // Try to verify as admin JWT
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        console.error("Invalid authentication token");
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Check if user is admin
+      const { data: isAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+      
+      if (!isAdmin) {
+        console.error("User is not admin");
+        return new Response(
+          JSON.stringify({ error: "Admin privileges required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log("Authenticated via admin JWT");
+    } else {
+      console.error("No authentication provided");
+      return new Response(
+        JSON.stringify({ error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log("Starting scheduled posts processing...");
@@ -98,13 +177,19 @@ serve(async (req) => {
           fullContent += "\n\n" + post.hashtags.map((h: string) => `#${h}`).join(" ");
         }
 
+        // Decrypt access token
+        const accessToken = await decryptToken(
+          linkedInAccount.access_token_encrypted,
+          tokenEncryptionKey
+        );
+
         // Call the post-to-linkedin function
         const postResponse = await supabase.functions.invoke("post-to-linkedin", {
           body: {
             userId: post.user_id,
             content: fullContent,
             linkedinUserId: linkedInAccount.linkedin_user_id,
-            accessToken: linkedInAccount.access_token_encrypted, // In production, decrypt this
+            accessToken: accessToken,
           },
         });
 

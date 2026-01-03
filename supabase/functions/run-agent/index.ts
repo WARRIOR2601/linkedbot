@@ -57,8 +57,51 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const cronSecret = Deno.env.get("CRON_SECRET_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    // Verify authentication - either cron secret or valid admin JWT
+    const authHeader = req.headers.get("authorization");
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+      // Valid cron secret - allow access
+      console.log("Authenticated via cron secret");
+    } else if (authHeader) {
+      // Try to verify as admin JWT
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        console.error("Invalid authentication token");
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Check if user is admin
+      const { data: isAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+      
+      if (!isAdmin) {
+        console.error("User is not admin");
+        return new Response(
+          JSON.stringify({ error: "Admin privileges required" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log("Authenticated via admin JWT");
+    } else {
+      console.error("No authentication provided");
+      return new Response(
+        JSON.stringify({ error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
