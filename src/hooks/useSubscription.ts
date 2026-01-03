@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -100,15 +100,31 @@ export const useSubscription = () => {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track last fetched user ID to prevent redundant fetches on tab focus
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+  const isFetchingRef = useRef(false);
 
-  const fetchSubscription = async () => {
+  const fetchSubscription = useCallback(async (force = false) => {
     if (!user) {
       setSubscription(null);
       setIsLoading(false);
+      lastFetchedUserIdRef.current = null;
+      return;
+    }
+
+    // Skip if we already fetched for this user (prevents tab-focus refetch)
+    if (!force && lastFetchedUserIdRef.current === user.id && subscription !== null) {
+      return;
+    }
+
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
       return;
     }
 
     try {
+      isFetchingRef.current = true;
       setIsLoading(true);
       const { data, error } = await supabase
         .from("user_subscriptions")
@@ -120,6 +136,7 @@ export const useSubscription = () => {
 
       if (data) {
         setSubscription(data as unknown as Subscription);
+        lastFetchedUserIdRef.current = user.id;
       } else {
         // Create default subscription if none exists
         const { data: newSub, error: createError } = await supabase
@@ -135,18 +152,23 @@ export const useSubscription = () => {
 
         if (createError) throw createError;
         setSubscription(newSub as unknown as Subscription);
+        lastFetchedUserIdRef.current = user.id;
       }
     } catch (err: any) {
       console.error("Error fetching subscription:", err);
       setError(err.message);
     } finally {
       setIsLoading(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [user, subscription]);
 
   useEffect(() => {
-    fetchSubscription();
-  }, [user]);
+    // Only fetch if user ID actually changed (not just reference)
+    if (user?.id !== lastFetchedUserIdRef.current) {
+      fetchSubscription();
+    }
+  }, [user?.id, fetchSubscription]);
 
   const getPlanDetails = (): PlanDetails => {
     return PLAN_DETAILS[subscription?.plan || "free"];
@@ -203,6 +225,6 @@ export const useSubscription = () => {
     canCreateAgent,
     getRemainingAgentSlots,
     hasFeature,
-    refetch: fetchSubscription,
+    refetch: () => fetchSubscription(true),
   };
 };
