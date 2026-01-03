@@ -9,13 +9,13 @@ const Privacy = () => {
           
           <div className="prose prose-invert max-w-none space-y-8">
             <p className="text-muted-foreground text-lg">
-              Last updated: January 1, 2024
+              Last updated: January 3, 2025
             </p>
 
             <div className="space-y-4">
               <h2 className="text-2xl font-semibold">1. Introduction</h2>
               <p className="text-muted-foreground">
-                Welcome to Linkedbot. We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you about how we look after your personal data when you visit our website and use our services.
+                Welcome to Linkedbot ("we," "us," or "our"). We respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our AI-powered LinkedIn content service. Linkedbot uses official LinkedIn APIs to provide posting functionality and does not scrape, automate engagement, or perform any unauthorized actions on LinkedIn.
               </p>
             </div>
 
@@ -25,11 +25,19 @@ const Privacy = () => {
                 We may collect, use, store and transfer different kinds of personal data about you including:
               </p>
               <ul className="list-disc list-inside text-muted-foreground space-y-2">
-                <li>Identity Data: first name, last name, username</li>
-                <li>Contact Data: email address</li>
-                <li>Technical Data: IP address, browser type, device information</li>
-                <li>Usage Data: information about how you use our website and services</li>
-                <li>LinkedIn Data: profile information and post analytics when you connect your account</li>
+                <li><strong>Identity Data:</strong> first name, last name, username</li>
+                <li><strong>Contact Data:</strong> email address</li>
+                <li><strong>Technical Data:</strong> IP address, browser type, device information</li>
+                <li><strong>Usage Data:</strong> information about how you use our website and services</li>
+                <li><strong>LinkedIn Data (when connected):</strong>
+                  <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                    <li>Your LinkedIn profile name and headline</li>
+                    <li>Your LinkedIn profile photo URL</li>
+                    <li>Your LinkedIn member ID (unique identifier)</li>
+                    <li>Post content you create through our AI agents</li>
+                    <li>Post performance metrics (impressions, likes, comments) when available</li>
+                  </ul>
+                </li>
               </ul>
             </div>
 
@@ -130,9 +138,36 @@ const Privacy = () => {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">7. Contact Us</h2>
+              <h2 className="text-2xl font-semibold">7. Data Deletion Requests</h2>
               <p className="text-muted-foreground">
-                If you have any questions about this privacy policy or our privacy practices, please contact us at privacy@linkedbot.com.
+                You have the right to request deletion of your personal data at any time. To request data deletion:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li>Email us at <a href="mailto:privacy@linkedbot.online" className="text-primary hover:underline">privacy@linkedbot.online</a> with "Data Deletion Request" in the subject line</li>
+                <li>Include your account email address for verification</li>
+                <li>We will process your request within 30 days</li>
+              </ul>
+              <p className="text-muted-foreground">
+                Upon deletion, we will remove all your personal data, LinkedIn tokens, AI agent configurations, and post history from our systems.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">8. Contact Us</h2>
+              <p className="text-muted-foreground">
+                If you have any questions about this privacy policy, our data practices, or wish to exercise your privacy rights, please contact us:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li><strong>General Privacy Inquiries:</strong> <a href="mailto:privacy@linkedbot.online" className="text-primary hover:underline">privacy@linkedbot.online</a></li>
+                <li><strong>Data Deletion Requests:</strong> <a href="mailto:privacy@linkedbot.online" className="text-primary hover:underline">privacy@linkedbot.online</a></li>
+                <li><strong>Legal Inquiries:</strong> <a href="mailto:legal@linkedbot.online" className="text-primary hover:underline">legal@linkedbot.online</a></li>
+              </ul>
+            </div>
+
+            <div className="mt-8 p-6 rounded-lg border border-border/50 bg-muted/30">
+              <p className="text-sm text-muted-foreground text-center">
+                Linkedbot is an independent service and is not affiliated with, endorsed by, or 
+                sponsored by LinkedIn Corporation. LinkedIn® is a registered trademark of LinkedIn Corporation.
               </p>
             </div>
           </div>

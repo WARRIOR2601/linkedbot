@@ -6,11 +6,7 @@ import {
   Sparkles,
   Calendar,
   BarChart3,
-  Zap,
   Target,
-  MessageSquare,
-  TrendingUp,
-  Clock,
   CheckCircle2,
   ArrowRight,
 } from "lucide-react";
@@ -199,56 +195,81 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Dashboard Preview */}
+      {/* What Linkedbot Does Section */}
       <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 via-transparent to-transparent" />
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              A Dashboard That
-              <span className="text-gradient"> Works For You</span>
+              What is
+              <span className="text-gradient"> Linkedbot?</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Everything you need in one beautiful, intuitive interface.
+              Linkedbot helps professionals create and schedule LinkedIn content using AI agents that work like virtual content interns.
             </p>
           </div>
 
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             <Card className="overflow-hidden border-primary/20">
-              <div className="aspect-video bg-gradient-to-br from-secondary to-muted flex items-center justify-center">
-                <div className="grid grid-cols-3 gap-4 p-8 w-full max-w-3xl">
-                  <Card className="col-span-2 p-4">
-                    <div className="flex items-center gap-3 mb-4">
-                      <TrendingUp className="w-5 h-5 text-primary" />
-                      <span className="font-medium">Engagement Overview</span>
-                    </div>
-                    <div className="h-32 bg-gradient-to-r from-primary/20 to-accent/20 rounded-lg animate-pulse" />
-                  </Card>
-                  <Card className="p-4">
-                    <div className="flex items-center gap-3 mb-4">
-                      <Clock className="w-5 h-5 text-accent" />
-                      <span className="font-medium">Scheduled</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-8 bg-muted rounded animate-pulse" />
-                      <div className="h-8 bg-muted rounded animate-pulse" />
-                      <div className="h-8 bg-muted rounded animate-pulse" />
-                    </div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="text-3xl font-bold text-primary">2.5K</div>
-                    <div className="text-sm text-muted-foreground">Profile Views</div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="text-3xl font-bold text-success">+45%</div>
-                    <div className="text-sm text-muted-foreground">Engagement Rate</div>
-                  </Card>
-                  <Card className="p-4">
-                    <div className="text-3xl font-bold text-accent">128</div>
-                    <div className="text-sm text-muted-foreground">Posts This Month</div>
-                  </Card>
+              <CardContent className="p-8 md:p-12">
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-success" />
+                      What AI Agents Do
+                    </h3>
+                    <ul className="space-y-3 text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success mt-1 shrink-0" />
+                        <span>Draft LinkedIn posts based on your voice and style</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success mt-1 shrink-0" />
+                        <span>Schedule posts at times you choose</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success mt-1 shrink-0" />
+                        <span>Publish only with your explicit approval</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-success mt-1 shrink-0" />
+                        <span>Use official LinkedIn APIs only</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                      <Target className="w-5 h-5 text-destructive" />
+                      What Agents Never Do
+                    </h3>
+                    <ul className="space-y-3 text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <span className="text-destructive mt-1 shrink-0">✕</span>
+                        <span>Like, comment, or share other posts</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-destructive mt-1 shrink-0">✕</span>
+                        <span>Send messages or connection requests</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-destructive mt-1 shrink-0">✕</span>
+                        <span>Scrape data or automate engagement</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-destructive mt-1 shrink-0">✕</span>
+                        <span>Act without your authorization</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
-              </div>
+                
+                <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border/50">
+                  <p className="text-sm text-muted-foreground text-center">
+                    <strong>Your Control:</strong> You can pause agents or disconnect LinkedIn at any time. 
+                    Agents are immediately disabled when you revoke access.
+                  </p>
+                </div>
+              </CardContent>
             </Card>
           </div>
         </div>
