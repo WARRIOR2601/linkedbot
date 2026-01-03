@@ -159,9 +159,10 @@ export const useLinkedInAccount = () => {
     }
   };
 
-  // Check if user can post (has active Ayrshare connection)
+  // Check if user can post (single-owner mode - always true if account exists)
   const canPost = (): boolean => {
-    return !!account?.ayrshare_connected;
+    // In single-owner mode, posting is always available
+    return true;
   };
 
   return {

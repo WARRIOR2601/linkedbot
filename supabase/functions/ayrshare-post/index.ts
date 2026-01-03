@@ -10,15 +10,18 @@ interface PostRequest {
   postId: string;
   content: string;
   imageUrl?: string;
-  scheduleDate?: string; // ISO string in UTC
+  scheduleDate?: string;
 }
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log("=== Ayrshare Post Function (Single-Owner Mode) ===");
+    
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
@@ -27,21 +30,24 @@ serve(async (req) => {
       });
     }
 
+    // Get environment variables
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const ayrshareApiKey = Deno.env.get("AYRSHARE_API_KEY");
 
     if (!ayrshareApiKey) {
-      return new Response(JSON.stringify({ error: "Ayrshare API key not configured" }), {
+      return new Response(JSON.stringify({ error: "AYRSHARE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Create Supabase client with user's auth
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
+    // Verify user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -50,6 +56,9 @@ serve(async (req) => {
       });
     }
 
+    console.log("User authenticated:", user.id);
+
+    // Parse request body
     const { postId, content, imageUrl, scheduleDate }: PostRequest = await req.json();
 
     if (!content) {
@@ -59,41 +68,27 @@ serve(async (req) => {
       });
     }
 
-    // Get user's Ayrshare profile key
-    const { data: account, error: accountError } = await supabase
-      .from("linkedin_accounts")
-      .select("ayrshare_profile_key, ayrshare_connected")
-      .eq("user_id", user.id)
-      .single();
+    console.log("Posting content:", content.substring(0, 100) + "...");
+    console.log("Image URL:", imageUrl || "none");
+    console.log("Schedule date:", scheduleDate || "immediate");
 
-    if (accountError || !account?.ayrshare_profile_key) {
-      return new Response(JSON.stringify({ error: "Ayrshare profile not found. Please connect LinkedIn first." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!account.ayrshare_connected) {
-      return new Response(JSON.stringify({ error: "LinkedIn not connected. Please connect your LinkedIn account." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Build post request
+    // Build Ayrshare post body (single-owner mode - no profileKey needed)
     const postBody: Record<string, unknown> = {
       post: content,
       platforms: ["linkedin"],
-      profileKey: account.ayrshare_profile_key,
     };
 
+    // Add image if provided
     if (imageUrl) {
       postBody.mediaUrls = [imageUrl];
     }
 
+    // Add schedule date if provided
     if (scheduleDate) {
       postBody.scheduleDate = scheduleDate;
     }
+
+    console.log("Ayrshare request body:", JSON.stringify(postBody, null, 2));
 
     // Post to Ayrshare
     const postResponse = await fetch("https://api.ayrshare.com/api/post", {
@@ -106,6 +101,7 @@ serve(async (req) => {
     });
 
     const postResult = await postResponse.json();
+    console.log("Ayrshare response:", JSON.stringify(postResult, null, 2));
 
     if (!postResponse.ok || postResult.status === "error") {
       console.error("Ayrshare post error:", postResult);
@@ -152,9 +148,9 @@ serve(async (req) => {
         .update(updateData)
         .eq("id", postId)
         .eq("user_id", user.id);
-    }
 
-    console.log("Ayrshare post successful for user:", user.id, "Post ID:", postId);
+      console.log("Post updated in database:", postId);
+    }
 
     return new Response(JSON.stringify({ 
       success: true,
