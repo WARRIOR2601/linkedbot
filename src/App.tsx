@@ -16,6 +16,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import Contact from "./pages/Contact";
 import Onboarding from "./pages/Onboarding";
 import AccountDisabled from "./pages/AccountDisabled";
 import NotFound from "./pages/NotFound";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
+            <Route path="/contact" element={<Contact />} />
 
             {/* Auth Routes - Redirect if already logged in */}
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

@@ -9,7 +9,7 @@ const Terms = () => {
           
           <div className="prose prose-invert max-w-none space-y-8">
             <p className="text-muted-foreground text-lg">
-              Last updated: January 1, 2024
+              Last updated: January 3, 2025
             </p>
 
             <div className="space-y-4">
@@ -140,9 +140,34 @@ const Terms = () => {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold">8. Contact Us</h2>
+              <h2 className="text-2xl font-semibold">8. Governing Law</h2>
               <p className="text-muted-foreground">
-                If you have any questions about these Terms, please contact us at legal@linkedbot.com.
+                These Terms shall be governed by and construed in accordance with applicable laws. Any disputes arising under or in connection with these Terms shall be subject to the exclusive jurisdiction of the appropriate courts.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">9. Termination</h2>
+              <p className="text-muted-foreground">
+                We may terminate or suspend your account and access to the service immediately, without prior notice or liability, for any reason, including if you breach these Terms. Upon termination, your right to use the service will immediately cease. All AI agents will be disabled and scheduled posts will be cancelled.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h2 className="text-2xl font-semibold">10. Contact Us</h2>
+              <p className="text-muted-foreground">
+                If you have any questions about these Terms, please contact us:
+              </p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                <li><strong>Legal Inquiries:</strong> <a href="mailto:legal@linkedbot.online" className="text-primary hover:underline">legal@linkedbot.online</a></li>
+                <li><strong>General Support:</strong> <a href="mailto:support@linkedbot.online" className="text-primary hover:underline">support@linkedbot.online</a></li>
+              </ul>
+            </div>
+
+            <div className="mt-8 p-6 rounded-lg border border-border/50 bg-muted/30">
+              <p className="text-sm text-muted-foreground text-center">
+                Linkedbot is an independent service and is not affiliated with, endorsed by, or 
+                sponsored by LinkedIn Corporation. LinkedIn® is a registered trademark of LinkedIn Corporation.
               </p>
             </div>
           </div>
