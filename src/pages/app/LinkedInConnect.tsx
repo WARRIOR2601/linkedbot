@@ -37,7 +37,7 @@ const LinkedInConnect = () => {
   // Handle OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
-    const state = searchParams.get("state");
+    const receivedState = searchParams.get("state");
     const error = searchParams.get("error");
 
     if (error) {
@@ -48,14 +48,28 @@ const LinkedInConnect = () => {
       return;
     }
 
-    if (code && user) {
-      handleOAuthCallback(code);
+    if (code && receivedState && user) {
+      handleOAuthCallback(code, receivedState);
+    } else if (code && user && !receivedState) {
+      // Missing state - potential CSRF attack
+      toast.error("Security validation failed", {
+        description: "OAuth state parameter missing. Please try again.",
+      });
+      setSearchParams({});
     }
   }, [searchParams, user]);
 
-  const handleOAuthCallback = async (code: string) => {
+  const handleOAuthCallback = async (code: string, receivedState: string) => {
     setIsConnecting(true);
     try {
+      // CSRF protection: Validate state parameter
+      const storedState = sessionStorage.getItem("linkedin_oauth_state");
+      sessionStorage.removeItem("linkedin_oauth_state"); // Clear immediately after retrieval
+      
+      if (!storedState || storedState !== receivedState) {
+        throw new Error("Invalid OAuth state - possible CSRF attack. Please try connecting again.");
+      }
+      
       const redirectUri = `${window.location.origin}/app/linkedin`;
       
       const { data, error } = await supabase.functions.invoke("linkedin-oauth-callback", {
@@ -63,6 +77,7 @@ const LinkedInConnect = () => {
           code,
           redirectUri,
           userId: user?.id,
+          state: receivedState,
         },
       });
 
