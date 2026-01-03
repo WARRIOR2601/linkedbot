@@ -61,9 +61,10 @@ serve(async (req) => {
 
     // Check connected platforms from Ayrshare using the profiles endpoint
     console.log("Checking Ayrshare profile status for key:", account.ayrshare_profile_key);
+    console.log("Using API key (first 10 chars):", ayrshareApiKey.substring(0, 10));
     
     // Use GET /api/profiles to get all profiles, then find ours
-    const profileResponse = await fetch("https://app.ayrshare.com/api/profiles", {
+    const profileResponse = await fetch("https://api.ayrshare.com/api/profiles", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${ayrshareApiKey}`,
