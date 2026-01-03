@@ -23,3 +23,15 @@ verify_jwt = false
 
 [functions.run-agent]
 verify_jwt = false
+
+[functions.ayrshare-create-profile]
+verify_jwt = true
+
+[functions.ayrshare-check-status]
+verify_jwt = true
+
+[functions.ayrshare-post]
+verify_jwt = true
+
+[functions.ayrshare-disconnect]
+verify_jwt = true

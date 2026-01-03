@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,6 +15,10 @@ export interface LinkedInAccount {
   connected_at: string | null;
   created_at: string;
   updated_at: string;
+  // Ayrshare fields
+  ayrshare_profile_key: string | null;
+  ayrshare_connected: boolean | null;
+  ayrshare_connected_at: string | null;
 }
 
 export type ConnectionStatus = "not_connected" | "connected" | "expired";
@@ -25,7 +29,7 @@ export const useLinkedInAccount = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAccount = async () => {
+  const fetchAccount = useCallback(async () => {
     if (!user) {
       setAccount(null);
       setIsLoading(false);
@@ -48,42 +52,59 @@ export const useLinkedInAccount = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchAccount();
-  }, [user]);
+  }, [fetchAccount]);
 
   const getConnectionStatus = (): ConnectionStatus => {
-    if (!account || !account.is_connected) {
+    if (!account) {
       return "not_connected";
     }
     
-    if (account.token_expires_at) {
-      const expiresAt = new Date(account.token_expires_at);
-      if (expiresAt < new Date()) {
-        return "expired";
-      }
+    // Prioritize Ayrshare connection status
+    if (account.ayrshare_connected) {
+      return "connected";
     }
     
-    return "connected";
+    // Fallback to legacy OAuth connection
+    if (account.is_connected) {
+      if (account.token_expires_at) {
+        const expiresAt = new Date(account.token_expires_at);
+        if (expiresAt < new Date()) {
+          return "expired";
+        }
+      }
+      return "connected";
+    }
+    
+    return "not_connected";
   };
 
   const disconnectAccount = async () => {
     if (!user || !account) return { error: "No account to disconnect" };
 
     try {
-      const { error } = await supabase
-        .from("linkedin_accounts")
-        .update({
-          is_connected: false,
-          access_token_encrypted: null,
-          refresh_token_encrypted: null,
-          token_expires_at: null,
-        })
-        .eq("user_id", user.id);
+      // Use Ayrshare disconnect if available
+      if (account.ayrshare_profile_key) {
+        const { error } = await supabase.functions.invoke("ayrshare-disconnect");
+        if (error) throw error;
+      } else {
+        // Legacy disconnect
+        const { error } = await supabase
+          .from("linkedin_accounts")
+          .update({
+            is_connected: false,
+            access_token_encrypted: null,
+            refresh_token_encrypted: null,
+            token_expires_at: null,
+          })
+          .eq("user_id", user.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
+      
       await fetchAccount();
       return { error: null };
     } catch (err: any) {
@@ -92,7 +113,7 @@ export const useLinkedInAccount = () => {
     }
   };
 
-  // This function would be called after successful OAuth flow
+  // This function would be called after successful OAuth flow (legacy)
   const connectAccount = async (linkedInData: {
     linkedin_user_id: string;
     profile_name: string;
@@ -116,14 +137,13 @@ export const useLinkedInAccount = () => {
         profile_photo_url: linkedInData.profile_photo_url || null,
         headline: linkedInData.headline || null,
         followers_count: linkedInData.followers_count || null,
-        access_token_encrypted: linkedInData.access_token, // In production, encrypt this
+        access_token_encrypted: linkedInData.access_token,
         refresh_token_encrypted: linkedInData.refresh_token || null,
         token_expires_at: tokenExpiresAt.toISOString(),
         is_connected: true,
         connected_at: new Date().toISOString(),
       };
 
-      // Upsert - create or update
       const { data, error } = await supabase
         .from("linkedin_accounts")
         .upsert(accountData, { onConflict: "user_id" })
@@ -139,6 +159,11 @@ export const useLinkedInAccount = () => {
     }
   };
 
+  // Check if user can post (has active Ayrshare connection)
+  const canPost = (): boolean => {
+    return !!account?.ayrshare_connected;
+  };
+
   return {
     account,
     isLoading,
@@ -147,5 +172,6 @@ export const useLinkedInAccount = () => {
     connectAccount,
     disconnectAccount,
     refetch: fetchAccount,
+    canPost: canPost(),
   };
 };

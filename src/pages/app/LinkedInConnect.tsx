@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useLinkedInAccount } from "@/hooks/useLinkedInAccount";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,7 +17,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Shield,
-  Link as LinkIcon,
   Unlink,
   ExternalLink,
   Info,
@@ -29,100 +27,83 @@ import {
 
 const LinkedInConnect = () => {
   const { user } = useAuth();
-  const { account, isLoading, connectionStatus, disconnectAccount, refetch } = useLinkedInAccount();
+  const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"not_connected" | "connected" | "expired">("not_connected");
+  const [connectedAt, setConnectedAt] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Handle OAuth callback
+  // Check Ayrshare connection status on mount and after return from Ayrshare
   useEffect(() => {
-    const code = searchParams.get("code");
-    const receivedState = searchParams.get("state");
-    const error = searchParams.get("error");
-
-    if (error) {
-      toast.error("LinkedIn connection failed", {
-        description: searchParams.get("error_description") || "Please try again.",
-      });
-      setSearchParams({});
-      return;
+    if (user) {
+      checkConnectionStatus();
     }
+  }, [user]);
 
-    if (code && receivedState && user) {
-      handleOAuthCallback(code, receivedState);
-    } else if (code && user && !receivedState) {
-      // Missing state - potential CSRF attack
-      toast.error("Security validation failed", {
-        description: "OAuth state parameter missing. Please try again.",
+  // Handle return from Ayrshare linking
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (status === "success") {
+      toast.success("LinkedIn connected successfully!");
+      checkConnectionStatus();
+      setSearchParams({});
+    } else if (status === "error") {
+      toast.error("Failed to connect LinkedIn", {
+        description: "Please try again.",
       });
       setSearchParams({});
     }
-  }, [searchParams, user]);
+  }, [searchParams]);
 
-  const handleOAuthCallback = async (code: string, receivedState: string) => {
-    setIsConnecting(true);
+  const checkConnectionStatus = async () => {
     try {
-      // CSRF protection: Validate state parameter
-      const storedState = sessionStorage.getItem("linkedin_oauth_state");
-      sessionStorage.removeItem("linkedin_oauth_state"); // Clear immediately after retrieval
+      const { data, error } = await supabase.functions.invoke("ayrshare-check-status");
       
-      if (!storedState || storedState !== receivedState) {
-        throw new Error("Invalid OAuth state - possible CSRF attack. Please try connecting again.");
+      if (error) {
+        console.error("Status check error:", error);
+        setConnectionStatus("not_connected");
+        return;
       }
-      
-      const redirectUri = `${window.location.origin}/app/linkedin`;
-      
-      const { data, error } = await supabase.functions.invoke("linkedin-oauth-callback", {
-        body: {
-          code,
-          redirectUri,
-          userId: user?.id,
-          state: receivedState,
-        },
-      });
 
-      if (error) throw error;
-
-      if (data.success) {
-        toast.success("LinkedIn connected successfully!", {
-          description: `Connected as ${data.account.profile_name}`,
-        });
-        refetch();
+      if (data.connected) {
+        setConnectionStatus("connected");
+        // Fetch connected_at from database
+        const { data: account } = await supabase
+          .from("linkedin_accounts")
+          .select("ayrshare_connected_at")
+          .eq("user_id", user?.id)
+          .single();
+        
+        if (account?.ayrshare_connected_at) {
+          setConnectedAt(account.ayrshare_connected_at);
+        }
       } else {
-        throw new Error(data.error || "Connection failed");
+        setConnectionStatus("not_connected");
       }
-    } catch (err: any) {
-      console.error("OAuth callback error:", err);
-      toast.error("Failed to complete LinkedIn connection", {
-        description: err.message,
-      });
+    } catch (err) {
+      console.error("Status check error:", err);
+      setConnectionStatus("not_connected");
     } finally {
-      setIsConnecting(false);
-      setSearchParams({});
+      setIsLoading(false);
     }
   };
 
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/app/linkedin`;
-      
-      const { data, error } = await supabase.functions.invoke("linkedin-oauth-init", {
-        body: { redirectUri },
-      });
+      const { data, error } = await supabase.functions.invoke("ayrshare-create-profile");
 
       if (error) throw error;
 
-      if (data.authUrl) {
-        // Store state for CSRF protection
-        sessionStorage.setItem("linkedin_oauth_state", data.state);
-        // Redirect to LinkedIn
-        window.location.href = data.authUrl;
+      if (data.linkUrl) {
+        // Redirect to Ayrshare for LinkedIn connection
+        window.location.href = data.linkUrl;
       } else {
-        throw new Error(data.error || "Failed to generate OAuth URL");
+        throw new Error(data.error || "Failed to generate connection link");
       }
     } catch (err: any) {
-      console.error("OAuth init error:", err);
+      console.error("Connect error:", err);
       toast.error("Failed to start LinkedIn connection", {
         description: err.message,
       });
@@ -132,18 +113,25 @@ const LinkedInConnect = () => {
 
   const handleDisconnect = async () => {
     setIsDisconnecting(true);
-    const { error } = await disconnectAccount();
-    setIsDisconnecting(false);
-    
-    if (error) {
-      toast.error("Failed to disconnect LinkedIn account");
-    } else {
+    try {
+      const { error } = await supabase.functions.invoke("ayrshare-disconnect");
+      
+      if (error) throw error;
+
       toast.success("LinkedIn account disconnected");
+      setConnectionStatus("not_connected");
+      setConnectedAt(null);
+    } catch (err: any) {
+      console.error("Disconnect error:", err);
+      toast.error("Failed to disconnect LinkedIn account");
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
-  const handleReconnect = async () => {
-    handleConnect();
+  const handleRefresh = () => {
+    setIsLoading(true);
+    checkConnectionStatus();
   };
 
   if (isLoading) {
@@ -183,7 +171,7 @@ const LinkedInConnect = () => {
           <Shield className="h-4 w-4 text-primary" />
           <AlertTitle>You're Always in Control</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            By connecting LinkedIn, you explicitly allow your AI agents to publish posts on your behalf using official LinkedIn APIs. 
+            By connecting LinkedIn, you explicitly allow your AI agents to publish posts on your behalf using official APIs. 
             You can pause agents or disconnect LinkedIn at any time. Agents are disabled if LinkedIn is disconnected and cannot bypass your control.
             We will never post without your explicit review and approval.
           </AlertDescription>
@@ -199,28 +187,6 @@ const LinkedInConnect = () => {
           </AlertDescription>
         </Alert>
 
-        {/* API Status Banner */}
-        <Alert className="border-warning/50 bg-warning/10">
-          <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertTitle className="text-warning">Posting Pending LinkedIn Approval</AlertTitle>
-          <AlertDescription className="text-warning/80">
-            LinkedIn posting is currently awaiting API approval. You can connect your account and create posts, 
-            but publishing to LinkedIn will be enabled once LinkedIn approves our application.
-          </AlertDescription>
-        </Alert>
-
-        {/* Why Approval Is Needed */}
-        <Alert className="border-muted bg-muted/30">
-          <Info className="h-4 w-4" />
-          <AlertTitle>Why is LinkedIn API approval needed?</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            LinkedIn requires all third-party applications to complete an API approval process before enabling 
-            posting capabilities. This ensures user data is handled securely and that applications comply with 
-            LinkedIn's policies. During this approval period, you can still connect your account, draft posts, 
-            and schedule content—publishing will be enabled automatically once approval is granted.
-          </AlertDescription>
-        </Alert>
-
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
           <Card className={connectionStatus === "connected" ? "border-success/50" : ""}>
@@ -230,15 +196,10 @@ const LinkedInConnect = () => {
                   <Linkedin className="w-7 h-7 text-white" />
                 </div>
                 {connectionStatus === "connected" && (
-                  <div className="flex flex-col gap-1 items-end">
-                    <Badge variant="default" className="bg-success">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Connected
-                    </Badge>
-                    <Badge variant="outline" className="text-warning border-warning text-xs">
-                      Posting pending approval
-                    </Badge>
-                  </div>
+                  <Badge variant="default" className="bg-success">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
                 )}
                 {connectionStatus === "expired" && (
                   <Badge variant="destructive">
@@ -253,67 +214,47 @@ const LinkedInConnect = () => {
               <CardTitle className="mt-4">LinkedIn Account</CardTitle>
               <CardDescription>
                 {connectionStatus === "connected"
-                  ? "Your account is connected. Posting will be enabled after LinkedIn API approval."
+                  ? "Your account is connected and ready for posting."
                   : connectionStatus === "expired"
                   ? "Your connection has expired. Please reconnect."
                   : "Connect your LinkedIn to manage your content workflow"}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {connectionStatus === "connected" && account && (
+              {connectionStatus === "connected" && (
                 <div className="space-y-4">
-                  {/* Profile Info */}
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                    <Avatar className="h-14 w-14">
-                      <AvatarImage src={account.profile_photo_url || undefined} />
-                      <AvatarFallback className="text-lg">
-                        {account.profile_name?.charAt(0) || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-semibold">{account.profile_name || "LinkedIn User"}</p>
-                      {account.headline && (
-                        <p className="text-sm text-muted-foreground">{account.headline}</p>
-                      )}
-                      {account.followers_count !== null && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {account.followers_count.toLocaleString()} followers
+                  {/* Connection Info */}
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-success" />
+                      <div>
+                        <p className="font-medium">LinkedIn Connected</p>
+                        <p className="text-sm text-muted-foreground">
+                          Your account is ready for automated posting
                         </p>
-                      )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Connection Info */}
+                  {/* Connection Details */}
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Connection</span>
+                      <span className="text-muted-foreground">Status</span>
                       <span className="flex items-center gap-2 text-success">
                         <CheckCircle2 className="w-4 h-4" />
                         Active
                       </span>
                     </div>
-                    <div className="flex items-center justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Posting Status</span>
-                      <Badge variant="outline" className="text-warning border-warning">
-                        Pending Approval
-                      </Badge>
-                    </div>
-                    {account.connected_at && (
-                      <div className="flex items-center justify-between py-2 border-b border-border">
-                        <span className="text-muted-foreground">Connected Since</span>
-                        <span>{format(parseISO(account.connected_at), "MMM d, yyyy")}</span>
-                      </div>
-                    )}
-                    {account.token_expires_at && (
+                    {connectedAt && (
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-muted-foreground">Token Expires</span>
-                        <span>{format(parseISO(account.token_expires_at), "MMM d, yyyy")}</span>
+                        <span className="text-muted-foreground">Connected Since</span>
+                        <span>{format(parseISO(connectedAt), "MMM d, yyyy")}</span>
                       </div>
                     )}
                   </div>
 
                   <div className="flex gap-3">
-                    <Button variant="outline" className="flex-1" onClick={handleReconnect}>
+                    <Button variant="outline" className="flex-1" onClick={handleRefresh}>
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Refresh
                     </Button>
@@ -330,16 +271,16 @@ const LinkedInConnect = () => {
                 </div>
               )}
 
-              {connectionStatus === "expired" && account && (
+              {connectionStatus === "expired" && (
                 <div className="space-y-4">
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Connection Expired</AlertTitle>
                     <AlertDescription>
-                      Your LinkedIn access token has expired. Please reconnect.
+                      Your LinkedIn access has expired. Please reconnect.
                     </AlertDescription>
                   </Alert>
-                  <Button onClick={handleReconnect} className="w-full">
+                  <Button onClick={handleConnect} className="w-full">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Reconnect LinkedIn
                   </Button>
@@ -379,17 +320,12 @@ const LinkedInConnect = () => {
 
           {/* Features & Security */}
           <div className="space-y-6">
-            <Card className="border-warning/30">
+            <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-primary" />
-                    What You Can Do
-                  </CardTitle>
-                  <Badge variant="outline" className="text-warning border-warning">
-                    Test Mode
-                  </Badge>
-                </div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  What You Can Do
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3">
@@ -399,17 +335,14 @@ const LinkedInConnect = () => {
                     { text: "Schedule posts for optimal times", available: true },
                     { text: "Pause or cancel scheduled posts anytime", available: true },
                     { text: "Disconnect your account at any time", available: true },
-                    { text: "Publish posts to LinkedIn", available: false, note: "Pending approval" },
-                    { text: "Analytics sync", available: false, note: "After approval" },
+                    { text: "Publish posts to LinkedIn", available: true },
+                    { text: "View scheduled and published posts", available: true },
                   ].map((feature, index) => (
                     <li key={index} className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-3">
                         <CheckCircle2 className={`w-4 h-4 shrink-0 ${feature.available ? "text-success" : "text-muted-foreground"}`} />
                         <span className={feature.available ? "" : "text-muted-foreground"}>{feature.text}</span>
                       </span>
-                      {feature.note && (
-                        <Badge variant="secondary" className="text-xs">{feature.note}</Badge>
-                      )}
                     </li>
                   ))}
                 </ul>
