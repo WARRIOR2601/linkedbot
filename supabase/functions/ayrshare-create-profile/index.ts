@@ -71,7 +71,8 @@ serve(async (req) => {
       console.log("Creating new Ayrshare profile for user:", user.id);
       console.log("Using API key (first 10 chars):", ayrshareApiKey.substring(0, 10));
       
-      const profileResponse = await fetch("https://api.ayrshare.com/api/profiles/profile", {
+      // Step 1: Create profile using the correct multi-user SaaS endpoint
+      const profileResponse = await fetch("https://api.ayrshare.com/api/profiles/create-profile", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${ayrshareApiKey}`,
@@ -129,26 +130,18 @@ serve(async (req) => {
       }
     }
 
-    // Generate JWT link for LinkedIn connection
-    // Note: The generateJWT endpoint requires domain and privateKey per Ayrshare docs
-    // If AYRSHARE_PRIVATE_KEY is not set, we use a simplified approach
-    const ayrsharePrivateKey = Deno.env.get("AYRSHARE_PRIVATE_KEY");
+    // Step 2: Generate JWT link for LinkedIn connection (multi-user SaaS flow)
+    // Using /api/generateJWT endpoint per Ayrshare Business Plan docs
     const redirectUrl = `${ayrshareDomain}/app/linkedin`;
     console.log("Generating JWT for profile:", profileKey, "with redirect:", redirectUrl);
     
-    const jwtBody: Record<string, any> = {
+    // For multi-user SaaS, we only need profileKey and redirect
+    const jwtBody = {
       profileKey: profileKey,
-      domain: ayrshareDomain,
       redirect: redirectUrl,
-      allowedSocial: ["linkedin"],
     };
     
-    // Add private key if available (required by Ayrshare API)
-    if (ayrsharePrivateKey) {
-      jwtBody.privateKey = ayrsharePrivateKey;
-    }
-    
-    const jwtResponse = await fetch("https://api.ayrshare.com/api/profiles/generateJWT", {
+    const jwtResponse = await fetch("https://api.ayrshare.com/api/generateJWT", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${ayrshareApiKey}`,

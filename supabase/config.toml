@@ -25,13 +25,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.ayrshare-create-profile]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ayrshare-check-status]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ayrshare-post]
-verify_jwt = true
+verify_jwt = false
 
 [functions.ayrshare-disconnect]
-verify_jwt = true
+verify_jwt = false
