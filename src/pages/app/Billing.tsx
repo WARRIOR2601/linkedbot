@@ -257,23 +257,24 @@ const Billing = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-medium mb-1">Are posts really unlimited?</h4>
+              <h4 className="font-medium mb-1">How does post frequency work?</h4>
               <p className="text-sm text-muted-foreground">
-                Yes! Each agent can create as many posts as your schedule allows. 
-                There are no post limits or credits to track.
+                Agents generate posts based on your schedule and posting rules. 
+                Posting frequency is fully user-controlled and designed to comply with LinkedIn guidelines.
               </p>
             </div>
             <div>
               <h4 className="font-medium mb-1">What happens if I downgrade?</h4>
               <p className="text-sm text-muted-foreground">
-                Your existing agents will continue running. You just won't be able to create 
-                new agents until you're below your plan's limit.
+                Your existing agents remain available and can be paused or managed at any time. 
+                Creating new agents may be limited depending on your plan.
               </p>
             </div>
             <div>
               <h4 className="font-medium mb-1">Can I change plans anytime?</h4>
               <p className="text-sm text-muted-foreground">
-                Absolutely. Upgrade or downgrade at any time. Changes take effect immediately.
+                Yes. You can upgrade or downgrade your plan at any time. 
+                Changes apply immediately to agent creation and management features.
               </p>
             </div>
           </CardContent>
