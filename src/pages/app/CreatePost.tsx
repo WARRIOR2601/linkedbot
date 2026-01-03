@@ -191,20 +191,12 @@ const CreatePost = () => {
           </p>
         </div>
 
-        {/* Posting Status Banner */}
-        <Alert className="border-warning/50 bg-warning/10">
-          <AlertTriangle className="h-4 w-4 text-warning" />
-          <AlertDescription className="text-warning/80 flex items-center gap-2">
-            <span className="font-medium">Posting pending approval:</span>
-            You can draft and schedule posts. Publishing to LinkedIn will be enabled after API approval.
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                <p>LinkedIn requires third-party apps to complete an approval process. Your posts are saved and will be ready to publish once approved.</p>
-              </TooltipContent>
-            </Tooltip>
+        {/* Posting Ready Info */}
+        <Alert className="border-primary/50 bg-primary/5">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-foreground/80 flex items-center gap-2">
+            <span className="font-medium">Ready to post:</span>
+            Connect your LinkedIn account in settings to enable scheduling and publishing.
           </AlertDescription>
         </Alert>
 

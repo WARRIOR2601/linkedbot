@@ -202,6 +202,9 @@ export type Database = {
       linkedin_accounts: {
         Row: {
           access_token_encrypted: string | null
+          ayrshare_connected: boolean | null
+          ayrshare_connected_at: string | null
+          ayrshare_profile_key: string | null
           connected_at: string | null
           created_at: string
           followers_count: number | null
@@ -218,6 +221,9 @@ export type Database = {
         }
         Insert: {
           access_token_encrypted?: string | null
+          ayrshare_connected?: boolean | null
+          ayrshare_connected_at?: string | null
+          ayrshare_profile_key?: string | null
           connected_at?: string | null
           created_at?: string
           followers_count?: number | null
@@ -234,6 +240,9 @@ export type Database = {
         }
         Update: {
           access_token_encrypted?: string | null
+          ayrshare_connected?: boolean | null
+          ayrshare_connected_at?: string | null
+          ayrshare_profile_key?: string | null
           connected_at?: string | null
           created_at?: string
           followers_count?: number | null
