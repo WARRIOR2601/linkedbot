@@ -39,7 +39,20 @@ import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminAIModels from "./pages/admin/AdminAIModels";
 import AdminLogs from "./pages/admin/AdminLogs";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Prevent refetching on window focus to maintain dashboard stability
+      refetchOnWindowFocus: false,
+      // Only refetch on mount if data is stale (5 minutes)
+      staleTime: 5 * 60 * 1000,
+      // Keep cache for 10 minutes
+      gcTime: 10 * 60 * 1000,
+      // Don't retry failed queries aggressively
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
