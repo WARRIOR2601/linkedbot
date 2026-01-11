@@ -1,4 +1,3 @@
-import { useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExtension } from "@/hooks/useExtension";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 import {
   Chrome,
   CheckCircle2,
@@ -15,45 +15,25 @@ import {
   Zap,
   Bot,
   XCircle,
-  RefreshCw,
-  Copy,
+  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Replace with your actual extension ID
+// Replace with your actual extension ID when published
 const EXTENSION_ID = "YOUR_EXTENSION_ID_HERE";
 
 const LinkedInConnect = () => {
   const navigate = useNavigate();
-  const { extensionStatus, isLoading, generateToken, revokeSession } = useExtension();
-  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { extensionStatus, analytics, isLoading, revokeSession } = useExtension();
 
-  const handleConnectExtension = async () => {
-    setIsGenerating(true);
-    try {
-      const token = await generateToken.mutateAsync();
-      setGeneratedToken(token);
-      toast.success("Extension token generated! Copy it to your extension.");
-    } catch (error) {
-      console.error("Failed to generate token:", error);
-      toast.error("Failed to generate extension token");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleCopyToken = async () => {
-    if (generatedToken) {
-      await navigator.clipboard.writeText(generatedToken);
-      toast.success("Token copied to clipboard");
-    }
+  const handleConnectExtension = () => {
+    // Redirect to extension's connect page - extension will auto-authenticate via cookies
+    window.location.href = `chrome-extension://${EXTENSION_ID}/connect.html`;
   };
 
   const handleDisconnect = async () => {
     try {
       await revokeSession.mutateAsync();
-      setGeneratedToken(null);
       toast.success("Extension disconnected");
     } catch (error) {
       console.error("Failed to disconnect:", error);
@@ -161,28 +141,20 @@ const LinkedInConnect = () => {
                       <p className="text-sm text-muted-foreground">
                         {extensionStatus.isConnected 
                           ? "Posts will be published via the Chrome Extension"
-                          : "Generate a token and paste it into the extension"
+                          : "Click below to connect your extension"
                         }
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Token Display */}
-                {generatedToken && (
-                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <p className="text-sm font-medium mb-2">Your Extension Token:</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs bg-background p-2 rounded border overflow-x-auto">
-                        {generatedToken.slice(0, 20)}...{generatedToken.slice(-10)}
-                      </code>
-                      <Button size="sm" variant="outline" onClick={handleCopyToken}>
-                        <Copy className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      This token expires in 1 hour. Keep it secure.
-                    </p>
+                {/* Last Sync Time */}
+                {extensionStatus.isConnected && extensionStatus.lastSeen && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span>
+                      Last synced {formatDistanceToNow(new Date(extensionStatus.lastSeen), { addSuffix: true })}
+                    </span>
                   </div>
                 )}
 
@@ -192,39 +164,18 @@ const LinkedInConnect = () => {
                     <Button 
                       className="w-full" 
                       onClick={handleConnectExtension}
-                      disabled={isGenerating}
                     >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Generating Token...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          Generate Extension Token
-                        </>
-                      )}
+                      <Chrome className="w-4 h-4 mr-2" />
+                      Connect Chrome Extension
                     </Button>
                   ) : (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={handleConnectExtension}
-                        disabled={isGenerating}
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? "animate-spin" : ""}`} />
-                        Refresh Token
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        className="w-full text-destructive hover:text-destructive"
-                        onClick={handleDisconnect}
-                      >
-                        Disconnect Extension
-                      </Button>
-                    </>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-destructive hover:text-destructive"
+                      onClick={handleDisconnect}
+                    >
+                      Disconnect Extension
+                    </Button>
                   )}
                 </div>
               </div>
@@ -244,10 +195,10 @@ const LinkedInConnect = () => {
                 <ol className="space-y-3 list-decimal list-inside">
                   {[
                     "Install the LinkedBot Chrome Extension",
-                    "Generate a token here and paste it into the extension",
+                    "Click 'Connect Chrome Extension' above",
+                    "The extension will auto-authenticate using your login",
                     "Keep the extension running while logged into LinkedIn",
-                    "The extension will post scheduled content automatically",
-                    "Analytics are captured and synced back here",
+                    "Scheduled posts are published automatically",
                   ].map((step, index) => (
                     <li key={index} className="text-sm text-muted-foreground">
                       {step}
@@ -279,11 +230,15 @@ const LinkedInConnect = () => {
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>Extension tokens expire after 1 hour</span>
+                    <span>Extension tokens are short-lived and auto-refresh</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>Tokens are revoked on logout</span>
+                    <span>Tokens are invisible - no copy/paste needed</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                    <span>Session is revoked on logout</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
@@ -291,7 +246,7 @@ const LinkedInConnect = () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>Extension only posts content you've scheduled</span>
+                    <span>Extension only posts your scheduled content</span>
                   </li>
                 </ul>
               </CardContent>
