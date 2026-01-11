@@ -20,7 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 // Replace with your actual extension ID when published
-const EXTENSION_ID = "fklefcdgmcgjmeilmnnmopakcaenafgd";
+const EXTENSION_ID = "fkledgmccgjmeilmnnmopakcaneafgd";
 
 const LinkedInConnect = () => {
   const navigate = useNavigate();
