@@ -308,6 +308,71 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* LinkedIn Analytics Cards */}
+        {extensionStatus.isConnected && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Followers</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.followers.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserPlus className="w-4 h-4 text-success" />
+                  <span className="text-xs text-muted-foreground">Connections</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.connections.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Posts</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.posts.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Heart className="w-4 h-4 text-destructive" />
+                  <span className="text-xs text-muted-foreground">Likes</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.likes.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-accent-foreground" />
+                  <span className="text-xs text-muted-foreground">Comments</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.comments.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Share2 className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Shares</span>
+                </div>
+                <p className="text-2xl font-bold">{analytics.shares.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>

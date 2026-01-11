@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useAgentAnalytics, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useAnalytics, TimeRange } from "@/hooks/useAnalytics";
+import { useExtension } from "@/hooks/useExtension";
 import TagAnalyticsChart from "@/components/analytics/TagAnalyticsChart";
 import {
   TrendingUp,
@@ -25,6 +26,10 @@ import {
   Image as ImageIcon,
   Type,
   Lightbulb,
+  Users,
+  UserPlus,
+  Share2,
+  Chrome,
 } from "lucide-react";
 import {
   AreaChart,
@@ -45,6 +50,7 @@ import { formatDistanceToNow, parseISO } from "date-fns";
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
   const { data: agentData, isLoading: agentLoading } = useAgentAnalytics();
+  const { extensionStatus, analytics: extensionAnalytics, isLoading: extensionLoading } = useExtension();
   const {
     isLoading: analyticsLoading,
     overviewStats,
@@ -56,7 +62,7 @@ const Analytics = () => {
     hasPosts,
   } = useAnalytics(timeRange);
 
-  const isLoading = agentLoading || analyticsLoading;
+  const isLoading = agentLoading || analyticsLoading || extensionLoading;
 
   if (isLoading) {
     return <AnalyticsLoading />;
@@ -110,15 +116,90 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* Analytics Status Banner */}
-        <Alert className="border-warning/30 bg-warning/5">
-          <Info className="h-4 w-4 text-warning" />
-          <AlertTitle className="text-warning">Analytics Available After LinkedIn Approval</AlertTitle>
-          <AlertDescription className="text-muted-foreground">
-            Full LinkedIn engagement analytics (impressions, likes, comments) will be available once LinkedIn approves our API access. 
-            Currently showing agent activity and post scheduling data only.
-          </AlertDescription>
-        </Alert>
+        {/* Chrome Extension Status */}
+        {extensionStatus.isConnected ? (
+          <Alert className="border-success/30 bg-success/5">
+            <Chrome className="h-4 w-4 text-success" />
+            <AlertTitle className="text-success">Chrome Extension Connected</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              Analytics are being captured by your Chrome Extension. Data updates when you browse LinkedIn.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="border-warning/30 bg-warning/5">
+            <Chrome className="h-4 w-4 text-warning" />
+            <AlertTitle className="text-warning">Chrome Extension Not Connected</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              Connect the Chrome Extension to capture LinkedIn analytics automatically.{" "}
+              <Link to="/app/linkedin" className="underline">Connect now</Link>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* LinkedIn Analytics Cards */}
+        {extensionStatus.isConnected && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Followers</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.followers.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <UserPlus className="w-4 h-4 text-success" />
+                  <span className="text-xs text-muted-foreground">Connections</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.connections.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Posts</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.posts.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Heart className="w-4 h-4 text-destructive" />
+                  <span className="text-xs text-muted-foreground">Likes</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.likes.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-accent-foreground" />
+                  <span className="text-xs text-muted-foreground">Comments</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.comments.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Share2 className="w-4 h-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Shares</span>
+                </div>
+                <p className="text-2xl font-bold">{extensionAnalytics.shares.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Overview Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
