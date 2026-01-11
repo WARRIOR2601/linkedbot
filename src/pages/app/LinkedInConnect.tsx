@@ -1,74 +1,65 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useExtension } from "@/hooks/useExtension";
+import { toast } from "sonner";
 import {
-  Linkedin,
+  Chrome,
   CheckCircle2,
   Shield,
   ExternalLink,
   Zap,
   Bot,
-  Settings,
+  XCircle,
+  RefreshCw,
+  Copy,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+// Replace with your actual extension ID
+const EXTENSION_ID = "YOUR_EXTENSION_ID_HERE";
+
 const LinkedInConnect = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isConfigured, setIsConfigured] = useState(false);
+  const { extensionStatus, isLoading, generateToken, revokeSession } = useExtension();
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Check if LinkedIn is configured (single-owner mode)
-  useEffect(() => {
-    const checkConfiguration = async () => {
-      try {
-        // In single-owner mode, we just need to verify the user exists
-        // The Ayrshare API key is already connected to the owner's LinkedIn
-        if (user) {
-          // Mark the user's account as connected in the database
-          const { data: account } = await supabase
-            .from("linkedin_accounts")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle();
+  const handleConnectExtension = async () => {
+    setIsGenerating(true);
+    try {
+      const token = await generateToken.mutateAsync();
+      setGeneratedToken(token);
+      toast.success("Extension token generated! Copy it to your extension.");
+    } catch (error) {
+      console.error("Failed to generate token:", error);
+      toast.error("Failed to generate extension token");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-          if (!account) {
-            // Create account record for the owner
-            await supabase.from("linkedin_accounts").insert({
-              user_id: user.id,
-              is_connected: true,
-              ayrshare_connected: true,
-              ayrshare_connected_at: new Date().toISOString(),
-            });
-          } else if (!account.ayrshare_connected) {
-            // Update existing record
-            await supabase
-              .from("linkedin_accounts")
-              .update({
-                is_connected: true,
-                ayrshare_connected: true,
-                ayrshare_connected_at: new Date().toISOString(),
-              })
-              .eq("user_id", user.id);
-          }
+  const handleCopyToken = async () => {
+    if (generatedToken) {
+      await navigator.clipboard.writeText(generatedToken);
+      toast.success("Token copied to clipboard");
+    }
+  };
 
-          setIsConfigured(true);
-        }
-      } catch (err) {
-        console.error("Configuration check error:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkConfiguration();
-  }, [user]);
+  const handleDisconnect = async () => {
+    try {
+      await revokeSession.mutateAsync();
+      setGeneratedToken(null);
+      toast.success("Extension disconnected");
+    } catch (error) {
+      console.error("Failed to disconnect:", error);
+      toast.error("Failed to disconnect extension");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -96,19 +87,19 @@ const LinkedInConnect = () => {
     <AppLayout>
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">LinkedIn Connection</h1>
+          <h1 className="text-3xl font-bold">Chrome Extension</h1>
           <p className="text-muted-foreground mt-1">
-            Your LinkedIn account is configured for automated posting
+            Connect the LinkedBot Chrome Extension to post to LinkedIn
           </p>
         </div>
 
-        {/* Single Owner Mode Notice */}
+        {/* Chrome Extension Mode Notice */}
         <Alert className="border-primary/50 bg-primary/5">
-          <Settings className="h-4 w-4 text-primary" />
-          <AlertTitle>Single-Owner Mode</AlertTitle>
+          <Chrome className="h-4 w-4 text-primary" />
+          <AlertTitle>Chrome Extension Mode</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            LinkedBot is configured to post to your LinkedIn account using your Ayrshare API key. 
-            All posts created in this app will be published to your connected LinkedIn profile.
+            LinkedBot uses a Chrome Extension to publish posts directly to LinkedIn. 
+            The extension runs in your browser and posts content on your behalf while you're logged into LinkedIn.
           </AlertDescription>
         </Alert>
 
@@ -118,66 +109,124 @@ const LinkedInConnect = () => {
           <AlertTitle>How AI Agents Work</AlertTitle>
           <AlertDescription className="text-muted-foreground">
             AI agents are content assistants that draft and schedule posts based on your preferences. 
-            They can only publish content you've reviewed and approved.
+            The Chrome Extension then publishes scheduled posts when they're due.
             Agents do not perform likes, comments, messages, or any engagement automation.
           </AlertDescription>
         </Alert>
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
-          <Card className="border-success/50">
+          <Card className={extensionStatus.isConnected ? "border-success/50" : "border-muted"}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-[#0A66C2] flex items-center justify-center">
-                  <Linkedin className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                  <Chrome className="w-7 h-7 text-white" />
                 </div>
-                <Badge variant="default" className="bg-success">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Configured
+                <Badge variant={extensionStatus.isConnected ? "default" : "secondary"} className={extensionStatus.isConnected ? "bg-success" : ""}>
+                  {extensionStatus.isConnected ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Connected
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-3 h-3 mr-1" />
+                      Not Connected
+                    </>
+                  )}
                 </Badge>
               </div>
-              <CardTitle className="mt-4">LinkedIn Account</CardTitle>
+              <CardTitle className="mt-4">Chrome Extension</CardTitle>
               <CardDescription>
-                Your LinkedIn account is ready for posting via Ayrshare integration.
+                {extensionStatus.isConnected 
+                  ? "Your extension is connected and ready to post"
+                  : "Connect the LinkedBot Chrome Extension to enable posting"
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {/* Connection Info */}
+                {/* Connection Status */}
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-success" />
+                    {extensionStatus.isConnected ? (
+                      <CheckCircle2 className="w-5 h-5 text-success" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-muted-foreground" />
+                    )}
                     <div>
-                      <p className="font-medium">Ready to Post</p>
+                      <p className="font-medium">
+                        {extensionStatus.isConnected ? "Ready to Post" : "Extension Not Connected"}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        Your Ayrshare API key is connected to your LinkedIn
+                        {extensionStatus.isConnected 
+                          ? "Posts will be published via the Chrome Extension"
+                          : "Generate a token and paste it into the extension"
+                        }
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Connection Details */}
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="flex items-center gap-2 text-success">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Active
-                    </span>
+                {/* Token Display */}
+                {generatedToken && (
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-sm font-medium mb-2">Your Extension Token:</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xs bg-background p-2 rounded border overflow-x-auto">
+                        {generatedToken.slice(0, 20)}...{generatedToken.slice(-10)}
+                      </code>
+                      <Button size="sm" variant="outline" onClick={handleCopyToken}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      This token expires in 1 hour. Keep it secure.
+                    </p>
                   </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-muted-foreground">Mode</span>
-                    <span>Single Owner</span>
-                  </div>
-                </div>
+                )}
 
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate("/app/create")}
-                >
-                  Create Your First Post
-                </Button>
+                {/* Actions */}
+                <div className="space-y-2">
+                  {!extensionStatus.isConnected ? (
+                    <Button 
+                      className="w-full" 
+                      onClick={handleConnectExtension}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Generating Token...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Generate Extension Token
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={handleConnectExtension}
+                        disabled={isGenerating}
+                      >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? "animate-spin" : ""}`} />
+                        Refresh Token
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full text-destructive hover:text-destructive"
+                        onClick={handleDisconnect}
+                      >
+                        Disconnect Extension
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -188,25 +237,34 @@ const LinkedInConnect = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Zap className="w-5 h-5 text-primary" />
-                  What You Can Do
+                  How It Works
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-3">
+                <ol className="space-y-3 list-decimal list-inside">
                   {[
-                    "Create and edit posts with AI assistance",
-                    "Schedule posts for optimal times",
-                    "Publish posts to LinkedIn",
-                    "View scheduled and published posts",
-                    "Use AI agents to generate content",
-                    "Track post performance",
-                  ].map((feature, index) => (
-                    <li key={index} className="flex items-center gap-3 text-sm">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />
-                      <span>{feature}</span>
+                    "Install the LinkedBot Chrome Extension",
+                    "Generate a token here and paste it into the extension",
+                    "Keep the extension running while logged into LinkedIn",
+                    "The extension will post scheduled content automatically",
+                    "Analytics are captured and synced back here",
+                  ].map((step, index) => (
+                    <li key={index} className="text-sm text-muted-foreground">
+                      {step}
                     </li>
                   ))}
-                </ul>
+                </ol>
+                <Button variant="outline" className="w-full mt-4" asChild>
+                  <a
+                    href={`https://chrome.google.com/webstore/detail/${EXTENSION_ID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Chrome className="w-4 h-4 mr-2" />
+                    Get Chrome Extension
+                    <ExternalLink className="w-3 h-3 ml-2" />
+                  </a>
+                </Button>
               </CardContent>
             </Card>
 
@@ -221,19 +279,19 @@ const LinkedInConnect = () => {
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>Posts are published via official Ayrshare API</span>
+                    <span>Extension tokens expire after 1 hour</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>API keys are stored securely in Supabase secrets</span>
+                    <span>Tokens are revoked on logout</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>No content is posted without your review and approval</span>
+                    <span>No LinkedIn credentials are stored</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                    <span>Only posting permissions are used</span>
+                    <span>Extension only posts content you've scheduled</span>
                   </li>
                 </ul>
               </CardContent>
@@ -241,17 +299,11 @@ const LinkedInConnect = () => {
           </div>
         </div>
 
-        {/* Help Link */}
+        {/* CTA */}
         <div className="text-center">
-          <Button variant="link" asChild>
-            <a
-              href="https://www.linkedin.com/help/linkedin/answer/a1342443"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learn about LinkedIn's third-party app policies
-              <ExternalLink className="w-3 h-3 ml-1" />
-            </a>
+          <Button variant="link" onClick={() => navigate("/app/agents")}>
+            Create an agent to start generating content
+            <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </div>
       </div>

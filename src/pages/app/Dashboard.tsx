@@ -13,6 +13,7 @@ import { usePosts } from "@/hooks/usePosts";
 import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } from "@/hooks/useAgents";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useExtension } from "@/hooks/useExtension";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TrendingUp,
@@ -34,6 +35,13 @@ import {
   Target,
   Settings,
   Info,
+  Chrome,
+  CheckCircle2,
+  XCircle,
+  Heart,
+  MessageSquare,
+  Share2,
+  UserPlus,
 } from "lucide-react";
 import {
   AreaChart,
@@ -51,8 +59,9 @@ const Dashboard = () => {
   const { agents, isLoading: agentsLoading, toggleAgentStatus } = useAgents();
   const { subscription, isLoading: subLoading, planDetails, isTrialActive, trialDaysRemaining, canCreateAgent } = useSubscription();
   const { profile, isLoading: profileLoading } = useOnboarding();
+  const { extensionStatus, analytics, isLoading: extensionLoading } = useExtension();
 
-  const isLoading = postsLoading || agentsLoading || subLoading || profileLoading;
+  const isLoading = postsLoading || agentsLoading || subLoading || profileLoading || extensionLoading;
 
   // Calculate stats from real post data
   const stats = useMemo(() => {
@@ -169,23 +178,40 @@ const Dashboard = () => {
             </AlertDescription>
           </Alert>
 
-          {/* LinkedIn Approval Status Banner */}
-          <Alert className="border-warning/50 bg-warning/10">
-            <AlertTriangle className="h-4 w-4 text-warning" />
-            <AlertDescription className="text-warning/80 flex items-center justify-between">
-              <span>
-                <span className="font-medium">LinkedIn posting pending approval.</span> You can create and schedule posts. Publishing will be enabled after approval.
-              </span>
-              <ShadcnTooltip>
-                <TooltipTrigger asChild>
-                  <Info className="h-4 w-4 cursor-help shrink-0 ml-2" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>LinkedIn requires API approval for third-party posting. Your scheduled posts are saved and ready.</p>
-                </TooltipContent>
-              </ShadcnTooltip>
-            </AlertDescription>
-          </Alert>
+          {/* Chrome Extension Status */}
+          <Card className={extensionStatus.isConnected ? "border-success/30 bg-success/5" : "border-warning/30 bg-warning/5"}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${extensionStatus.isConnected ? "bg-success/10" : "bg-warning/10"}`}>
+                    <Chrome className={`w-5 h-5 ${extensionStatus.isConnected ? "text-success" : "text-warning"}`} />
+                  </div>
+                  <div>
+                    <p className="font-medium flex items-center gap-2">
+                      Chrome Extension
+                      {extensionStatus.isConnected ? (
+                        <Badge className="bg-success text-xs">Connected</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs">Not Connected</Badge>
+                      )}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {extensionStatus.isConnected 
+                        ? "Ready to publish scheduled posts"
+                        : "Connect to enable LinkedIn posting"
+                      }
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/app/linkedin">
+                    {extensionStatus.isConnected ? "Manage" : "Connect"}
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
         {isTrialActive && (
           <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/5">
             <CardContent className="p-4">
