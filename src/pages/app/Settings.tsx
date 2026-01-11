@@ -8,10 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLinkedInAccount } from "@/hooks/useLinkedInAccount";
-import { User, Bell, Palette, Shield, Linkedin, Info, ExternalLink } from "lucide-react";
+import { User, Bell, Palette, Shield, Chrome, Info, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
 
 const Settings = () => {
-  const { account, connectionStatus } = useLinkedInAccount();
+  const { connectionStatus, extensionStatus } = useLinkedInAccount();
 
   return (
     <AppLayout>
@@ -21,32 +21,35 @@ const Settings = () => {
           <p className="text-muted-foreground">Manage your account preferences</p>
         </div>
 
-        {/* LinkedIn Connection & Consent */}
+        {/* Chrome Extension Connection */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Linkedin className="w-5 h-5 text-[#0A66C2]" />
-              LinkedIn Connection
+              <Chrome className="w-5 h-5 text-primary" />
+              Chrome Extension
             </CardTitle>
-            <CardDescription>Manage your LinkedIn account connection and posting preferences</CardDescription>
+            <CardDescription>Manage your Chrome Extension connection for LinkedIn posting</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-              <div>
-                <p className="font-medium">Connection Status</p>
-                <p className="text-sm text-muted-foreground">
-                  {connectionStatus === "connected" 
-                    ? `Connected as ${account?.profile_name || "LinkedIn User"}`
-                    : connectionStatus === "expired"
-                    ? "Connection expired - please reconnect"
-                    : "Not connected"}
-                </p>
+              <div className="flex items-center gap-3">
+                {connectionStatus === "connected" ? (
+                  <CheckCircle2 className="w-5 h-5 text-success" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-muted-foreground" />
+                )}
+                <div>
+                  <p className="font-medium">Connection Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    {connectionStatus === "connected" 
+                      ? "Chrome Extension is connected and ready to post"
+                      : "Chrome Extension is not connected"}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {connectionStatus === "connected" && (
-                  <Badge variant="outline" className="text-warning border-warning">
-                    Posting pending approval
-                  </Badge>
+                  <Badge className="bg-success">Connected</Badge>
                 )}
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/app/linkedin">
@@ -58,10 +61,10 @@ const Settings = () => {
 
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>AI Agents & LinkedIn Consent</AlertTitle>
+              <AlertTitle>AI Agents & Chrome Extension</AlertTitle>
               <AlertDescription className="text-muted-foreground">
-                By connecting LinkedIn, you explicitly allow your AI agents to publish posts on your behalf using official LinkedIn APIs.
-                You can pause agents or disconnect LinkedIn at any time. Agents are disabled if LinkedIn is disconnected and cannot bypass your control.
+                The Chrome Extension publishes scheduled posts to LinkedIn on your behalf while you're logged in.
+                You can pause agents or disconnect the extension at any time. Agents are disabled if the extension is disconnected.
                 We never post content without your explicit review and approval.
               </AlertDescription>
             </Alert>

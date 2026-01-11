@@ -199,6 +199,30 @@ export type Database = {
         }
         Relationships: []
       }
+      extension_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       linkedin_accounts: {
         Row: {
           access_token_encrypted: string | null
@@ -255,6 +279,45 @@ export type Database = {
           refresh_token_encrypted?: string | null
           token_expires_at?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linkedin_analytics: {
+        Row: {
+          captured_at: string
+          comments: number
+          connections: number
+          created_at: string
+          followers: number
+          id: string
+          likes: number
+          posts: number
+          shares: number
+          user_id: string
+        }
+        Insert: {
+          captured_at?: string
+          comments?: number
+          connections?: number
+          created_at?: string
+          followers?: number
+          id?: string
+          likes?: number
+          posts?: number
+          shares?: number
+          user_id: string
+        }
+        Update: {
+          captured_at?: string
+          comments?: number
+          connections?: number
+          created_at?: string
+          followers?: number
+          id?: string
+          likes?: number
+          posts?: number
+          shares?: number
           user_id?: string
         }
         Relationships: []
@@ -373,6 +436,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "posts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_posts: {
+        Row: {
+          agent_id: string | null
+          content: string
+          created_at: string
+          id: string
+          posted_at: string | null
+          scheduled_for: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          posted_at?: string | null
+          scheduled_for: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          posted_at?: string | null
+          scheduled_for?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
