@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useExtension } from "@/hooks/useExtension";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -19,11 +20,21 @@ import {
   Clock,
   Loader2,
   AlertCircle,
+  User,
+  Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // Extension ID only used for Chrome Web Store link (not for redirects)
 const EXTENSION_ID = "fkledgmccgjmeilmnnmopakcaneafgd";
+
+interface LinkedInProfile {
+  name: string;
+  headline: string;
+  followers: string;
+  profileUrl: string;
+  image?: string | null;
+}
 
 const LinkedInConnect = () => {
   const navigate = useNavigate();
@@ -34,6 +45,10 @@ const LinkedInConnect = () => {
     return localStorage.getItem("linkedbot_extension_connected") === "true";
   });
   const [autoDetectionAttempted, setAutoDetectionAttempted] = useState(false);
+  const [linkedInProfile, setLinkedInProfile] = useState<LinkedInProfile | null>(() => {
+    const stored = localStorage.getItem("linkedbot_profile_data");
+    return stored ? JSON.parse(stored) : null;
+  });
 
   // Auto-detect extension on mount and listen for connection events
   useEffect(() => {
@@ -68,6 +83,15 @@ const LinkedInConnect = () => {
         setLocalConnected(false);
         localStorage.removeItem("linkedbot_extension_connected");
         if (timeoutId) clearTimeout(timeoutId);
+      }
+
+      // Handle LinkedIn profile data from extension
+      if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
+        console.log("[LinkedBot] Profile data received:", event.data.payload);
+        const profile = event.data.payload as LinkedInProfile;
+        setLinkedInProfile(profile);
+        localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
+        toast.success("LinkedIn profile synced!");
       }
     };
 
@@ -121,7 +145,9 @@ const LinkedInConnect = () => {
     try {
       await revokeSession.mutateAsync();
       setLocalConnected(false);
+      setLinkedInProfile(null);
       localStorage.removeItem("linkedbot_extension_connected");
+      localStorage.removeItem("linkedbot_profile_data");
       toast.success("Extension disconnected");
     } catch (error) {
       console.error("Failed to disconnect:", error);
@@ -256,6 +282,43 @@ const LinkedInConnect = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* LinkedIn Profile Card */}
+                {isConnected && linkedInProfile && (
+                  <div className="p-4 rounded-lg border bg-card">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="w-14 h-14 border-2 border-primary/20">
+                        <AvatarImage src={linkedInProfile.image || undefined} alt={linkedInProfile.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          <User className="w-6 h-6" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold truncate">{linkedInProfile.name}</h3>
+                        <p className="text-sm text-muted-foreground truncate">{linkedInProfile.headline}</p>
+                        <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+                          <Users className="w-3 h-3" />
+                          <span>{linkedInProfile.followers} followers</span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full mt-3"
+                      asChild
+                    >
+                      <a 
+                        href={linkedInProfile.profileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        View LinkedIn Profile
+                        <ExternalLink className="w-3 h-3 ml-2" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
 
                 {/* Last Sync Time */}
                 {isConnected && extensionStatus.lastSeen && (
