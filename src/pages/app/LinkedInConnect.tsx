@@ -39,9 +39,17 @@ const LinkedInConnect = () => {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
+    console.log("[LinkedBot] Setting up extension message listener");
+
     const handleMessage = (event: MessageEvent) => {
+      // Log all incoming messages for debugging
+      if (event.data?.type?.startsWith("LINKEDBOT")) {
+        console.log("[LinkedBot] Received message:", event.data);
+      }
+
       // Handle extension connected event
       if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
+        console.log("[LinkedBot] Extension CONNECTED event received");
         setIsConnecting(false);
         setShowHelper(false);
         setLocalConnected(true);
@@ -54,6 +62,7 @@ const LinkedInConnect = () => {
       
       // Handle extension not connected event
       if (event.data?.type === "LINKEDBOT_EXTENSION_NOT_CONNECTED") {
+        console.log("[LinkedBot] Extension NOT_CONNECTED event received");
         setIsConnecting(false);
         setShowHelper(true);
         setLocalConnected(false);
@@ -69,11 +78,14 @@ const LinkedInConnect = () => {
       setAutoDetectionAttempted(true);
       setIsConnecting(true);
       
+      console.log("[LinkedBot] Sending auto-detection request");
+      
       // Send initial detection request
       window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
       
       // Show helper if no response after 5 seconds
       timeoutId = setTimeout(() => {
+        console.log("[LinkedBot] No response after 5 seconds - showing helper");
         setShowHelper(true);
         setIsConnecting(false);
       }, 5000);
