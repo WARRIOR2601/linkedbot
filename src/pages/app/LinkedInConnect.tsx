@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,20 +17,56 @@ import {
   Bot,
   XCircle,
   Clock,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// Replace with your actual extension ID when published
+// Extension ID only used for Chrome Web Store link (not for redirects)
 const EXTENSION_ID = "fkledgmccgjmeilmnnmopakcaneafgd";
 
 const LinkedInConnect = () => {
   const navigate = useNavigate();
   const { extensionStatus, analytics, isLoading, revokeSession } = useExtension();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
 
-  const handleConnectExtension = () => {
-    // Redirect to extension's connect page - extension will auto-authenticate via cookies
-    window.location.href = `chrome-extension://${EXTENSION_ID}/connect.html`;
-  };
+  // Listen for extension connection confirmation
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only accept messages from our extension
+      if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
+        setIsConnecting(false);
+        setShowHelper(false);
+        toast.success("Chrome Extension connected successfully!");
+        // Refetch extension status
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const handleConnectExtension = useCallback(() => {
+    setIsConnecting(true);
+    setShowHelper(false);
+
+    // Send message to extension via postMessage
+    window.postMessage(
+      { type: "LINKEDBOT_CONNECT_REQUEST" },
+      "*"
+    );
+
+    // Show helper message if no response after 5 seconds
+    const timeout = setTimeout(() => {
+      setShowHelper(true);
+      setIsConnecting(false);
+    }, 5000);
+
+    // Store timeout ID so we can clear it if component unmounts
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleDisconnect = async () => {
     try {
@@ -94,6 +131,18 @@ const LinkedInConnect = () => {
           </AlertDescription>
         </Alert>
 
+        {/* Helper message when extension not responding */}
+        {showHelper && !extensionStatus.isConnected && (
+          <Alert className="border-warning bg-warning/10">
+            <AlertCircle className="h-4 w-4 text-warning" />
+            <AlertTitle>Extension Not Detected</AlertTitle>
+            <AlertDescription className="text-muted-foreground">
+              Please open LinkedIn in another tab and refresh this page. 
+              The extension needs LinkedIn to be open to complete the connection.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
           <Card className={extensionStatus.isConnected ? "border-success/50" : "border-muted"}>
@@ -131,17 +180,26 @@ const LinkedInConnect = () => {
                   <div className="flex items-center gap-3">
                     {extensionStatus.isConnected ? (
                       <CheckCircle2 className="w-5 h-5 text-success" />
+                    ) : isConnecting ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
                     ) : (
                       <XCircle className="w-5 h-5 text-muted-foreground" />
                     )}
                     <div>
                       <p className="font-medium">
-                        {extensionStatus.isConnected ? "Ready to Post" : "Extension Not Connected"}
+                        {extensionStatus.isConnected 
+                          ? "Ready to Post" 
+                          : isConnecting 
+                            ? "Connecting..."
+                            : "Extension Not Connected"
+                        }
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {extensionStatus.isConnected 
                           ? "Posts will be published via the Chrome Extension"
-                          : "Click below to connect your extension"
+                          : isConnecting
+                            ? "Waiting for extension response..."
+                            : "Click below to connect your extension"
                         }
                       </p>
                     </div>
@@ -164,9 +222,19 @@ const LinkedInConnect = () => {
                     <Button 
                       className="w-full" 
                       onClick={handleConnectExtension}
+                      disabled={isConnecting}
                     >
-                      <Chrome className="w-4 h-4 mr-2" />
-                      Connect Chrome Extension
+                      {isConnecting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Connecting...
+                        </>
+                      ) : (
+                        <>
+                          <Chrome className="w-4 h-4 mr-2" />
+                          Connect Chrome Extension
+                        </>
+                      )}
                     </Button>
                   ) : (
                     <Button 
@@ -195,9 +263,9 @@ const LinkedInConnect = () => {
                 <ol className="space-y-3 list-decimal list-inside">
                   {[
                     "Install the LinkedBot Chrome Extension",
+                    "Open LinkedIn in another browser tab",
                     "Click 'Connect Chrome Extension' above",
                     "The extension will auto-authenticate using your login",
-                    "Keep the extension running while logged into LinkedIn",
                     "Scheduled posts are published automatically",
                   ].map((step, index) => (
                     <li key={index} className="text-sm text-muted-foreground">
