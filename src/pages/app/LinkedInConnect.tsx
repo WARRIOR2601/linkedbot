@@ -33,30 +33,62 @@ const LinkedInConnect = () => {
   const [localConnected, setLocalConnected] = useState(() => {
     return localStorage.getItem("linkedbot_extension_connected") === "true";
   });
+  const [autoDetectionAttempted, setAutoDetectionAttempted] = useState(false);
 
-  // Listen for extension connection confirmation
+  // Auto-detect extension on mount and listen for connection events
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const handleMessage = (event: MessageEvent) => {
-      // Only accept messages from our extension
+      // Handle extension connected event
       if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
         setIsConnecting(false);
         setShowHelper(false);
         setLocalConnected(true);
         localStorage.setItem("linkedbot_extension_connected", "true");
-        toast.success("Chrome Extension connected successfully!");
-        // Refetch extension status
-        window.location.reload();
+        if (!localConnected) {
+          toast.success("Chrome Extension connected successfully!");
+        }
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+      
+      // Handle extension not connected event
+      if (event.data?.type === "LINKEDBOT_EXTENSION_NOT_CONNECTED") {
+        setIsConnecting(false);
+        setShowHelper(true);
+        setLocalConnected(false);
+        localStorage.removeItem("linkedbot_extension_connected");
+        if (timeoutId) clearTimeout(timeoutId);
       }
     };
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+
+    // Auto-send connection request on mount (no button required)
+    if (!autoDetectionAttempted && !localConnected && !extensionStatus.isConnected) {
+      setAutoDetectionAttempted(true);
+      setIsConnecting(true);
+      
+      // Send initial detection request
+      window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+      
+      // Show helper if no response after 5 seconds
+      timeoutId = setTimeout(() => {
+        setShowHelper(true);
+        setIsConnecting(false);
+      }, 5000);
+    }
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [autoDetectionAttempted, localConnected, extensionStatus.isConnected]);
 
   // Derive final connected state
   const isConnected = extensionStatus.isConnected || localConnected;
 
-  const handleConnectExtension = useCallback(() => {
+  const handleRetryConnection = useCallback(() => {
     setIsConnecting(true);
     setShowHelper(false);
 
@@ -67,13 +99,10 @@ const LinkedInConnect = () => {
     );
 
     // Show helper message if no response after 5 seconds
-    const timeout = setTimeout(() => {
+    setTimeout(() => {
       setShowHelper(true);
       setIsConnecting(false);
     }, 5000);
-
-    // Store timeout ID so we can clear it if component unmounts
-    return () => clearTimeout(timeout);
   }, []);
 
   const handleDisconnect = async () => {
@@ -228,21 +257,21 @@ const LinkedInConnect = () => {
 
                 {/* Actions */}
                 <div className="space-y-2">
-                  {!isConnected ? (
+                {!isConnected ? (
                     <Button 
                       className="w-full" 
-                      onClick={handleConnectExtension}
+                      onClick={handleRetryConnection}
                       disabled={isConnecting}
                     >
                       {isConnecting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
+                          Detecting Extension...
                         </>
                       ) : (
                         <>
                           <Chrome className="w-4 h-4 mr-2" />
-                          Connect Chrome Extension
+                          Retry Connection
                         </>
                       )}
                     </Button>
