@@ -30,6 +30,9 @@ const LinkedInConnect = () => {
   const { extensionStatus, analytics, isLoading, revokeSession } = useExtension();
   const [isConnecting, setIsConnecting] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
+  const [localConnected, setLocalConnected] = useState(() => {
+    return localStorage.getItem("linkedbot_extension_connected") === "true";
+  });
 
   // Listen for extension connection confirmation
   useEffect(() => {
@@ -38,6 +41,8 @@ const LinkedInConnect = () => {
       if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
         setIsConnecting(false);
         setShowHelper(false);
+        setLocalConnected(true);
+        localStorage.setItem("linkedbot_extension_connected", "true");
         toast.success("Chrome Extension connected successfully!");
         // Refetch extension status
         window.location.reload();
@@ -47,6 +52,9 @@ const LinkedInConnect = () => {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
+
+  // Derive final connected state
+  const isConnected = extensionStatus.isConnected || localConnected;
 
   const handleConnectExtension = useCallback(() => {
     setIsConnecting(true);
@@ -71,6 +79,8 @@ const LinkedInConnect = () => {
   const handleDisconnect = async () => {
     try {
       await revokeSession.mutateAsync();
+      setLocalConnected(false);
+      localStorage.removeItem("linkedbot_extension_connected");
       toast.success("Extension disconnected");
     } catch (error) {
       console.error("Failed to disconnect:", error);
@@ -132,12 +142,12 @@ const LinkedInConnect = () => {
         </Alert>
 
         {/* Helper message when extension not responding */}
-        {showHelper && !extensionStatus.isConnected && (
-          <Alert className="border-warning bg-warning/10">
-            <AlertCircle className="h-4 w-4 text-warning" />
-            <AlertTitle>Extension Not Detected</AlertTitle>
+        {showHelper && !isConnected && (
+          <Alert className="border-amber-500/50 bg-amber-500/10">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertTitle>Waiting for Extension</AlertTitle>
             <AlertDescription className="text-muted-foreground">
-              Please open LinkedIn in another tab and refresh this page. 
+              Please open <strong>LinkedIn</strong> in another browser tab, then try connecting again. 
               The extension needs LinkedIn to be open to complete the connection.
             </AlertDescription>
           </Alert>
@@ -145,14 +155,14 @@ const LinkedInConnect = () => {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Connection Status Card */}
-          <Card className={extensionStatus.isConnected ? "border-success/50" : "border-muted"}>
+          <Card className={isConnected ? "border-success/50" : "border-muted"}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
                   <Chrome className="w-7 h-7 text-white" />
                 </div>
-                <Badge variant={extensionStatus.isConnected ? "default" : "secondary"} className={extensionStatus.isConnected ? "bg-success" : ""}>
-                  {extensionStatus.isConnected ? (
+                <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-success" : ""}>
+                  {isConnected ? (
                     <>
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       Connected
@@ -167,7 +177,7 @@ const LinkedInConnect = () => {
               </div>
               <CardTitle className="mt-4">Chrome Extension</CardTitle>
               <CardDescription>
-                {extensionStatus.isConnected 
+                {isConnected 
                   ? "Your extension is connected and ready to post"
                   : "Connect the LinkedBot Chrome Extension to enable posting"
                 }
@@ -178,7 +188,7 @@ const LinkedInConnect = () => {
                 {/* Connection Status */}
                 <div className="p-4 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-3">
-                    {extensionStatus.isConnected ? (
+                    {isConnected ? (
                       <CheckCircle2 className="w-5 h-5 text-success" />
                     ) : isConnecting ? (
                       <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -187,7 +197,7 @@ const LinkedInConnect = () => {
                     )}
                     <div>
                       <p className="font-medium">
-                        {extensionStatus.isConnected 
+                        {isConnected 
                           ? "Ready to Post" 
                           : isConnecting 
                             ? "Connecting..."
@@ -195,7 +205,7 @@ const LinkedInConnect = () => {
                         }
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {extensionStatus.isConnected 
+                        {isConnected 
                           ? "Posts will be published via the Chrome Extension"
                           : isConnecting
                             ? "Waiting for extension response..."
@@ -207,7 +217,7 @@ const LinkedInConnect = () => {
                 </div>
 
                 {/* Last Sync Time */}
-                {extensionStatus.isConnected && extensionStatus.lastSeen && (
+                {isConnected && extensionStatus.lastSeen && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
                     <span>
@@ -218,7 +228,7 @@ const LinkedInConnect = () => {
 
                 {/* Actions */}
                 <div className="space-y-2">
-                  {!extensionStatus.isConnected ? (
+                  {!isConnected ? (
                     <Button 
                       className="w-full" 
                       onClick={handleConnectExtension}
