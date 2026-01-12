@@ -49,8 +49,8 @@ export function useExtension() {
     refetchInterval: 30000, // Check every 30 seconds
   });
 
-  // Fetch latest analytics
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+  // Fetch latest analytics - don't block UI loading on this
+  const { data: analytics } = useQuery({
     queryKey: ["linkedin-analytics", user?.id],
     queryFn: async (): Promise<LinkedInAnalytics> => {
       if (!session?.access_token) {
@@ -88,6 +88,7 @@ export function useExtension() {
     },
     enabled: !!user && !!session,
     refetchInterval: 60000, // Refresh every minute
+    retry: false, // Don't retry on failure - prevents blocking
   });
 
   // Generate extension auth token
@@ -144,7 +145,7 @@ export function useExtension() {
       shares: 0,
       captured_at: null,
     },
-    isLoading: statusLoading || analyticsLoading,
+    isLoading: statusLoading,
     generateToken,
     revokeSession,
   };
