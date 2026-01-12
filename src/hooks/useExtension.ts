@@ -53,7 +53,11 @@ export function useExtension() {
   const { data: analytics } = useQuery({
     queryKey: ["linkedin-analytics", user?.id],
     queryFn: async (): Promise<LinkedInAnalytics> => {
-      if (!session?.access_token) {
+      // Get fresh session to ensure token is not expired
+      const { data: sessionData } = await supabase.auth.getSession();
+      const freshToken = sessionData?.session?.access_token;
+      
+      if (!freshToken) {
         return {
           followers: 0,
           connections: 0,
@@ -67,7 +71,7 @@ export function useExtension() {
 
       const { data, error } = await supabase.functions.invoke("analytics-latest", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${freshToken}`,
         },
       });
 
