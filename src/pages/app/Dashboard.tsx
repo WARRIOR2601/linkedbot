@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -42,6 +43,8 @@ import {
   MessageSquare,
   Share2,
   UserPlus,
+  User,
+  ExternalLink,
 } from "lucide-react";
 import {
   AreaChart,
@@ -53,6 +56,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface LinkedInProfile {
+  name: string;
+  headline: string;
+  followers: string;
+  profileUrl: string;
+  image?: string | null;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { posts, isLoading: postsLoading } = usePosts();
@@ -60,6 +71,25 @@ const Dashboard = () => {
   const { subscription, isLoading: subLoading, planDetails, isTrialActive, trialDaysRemaining, canCreateAgent } = useSubscription();
   const { profile, isLoading: profileLoading } = useOnboarding();
   const { extensionStatus, analytics, isLoading: extensionLoading } = useExtension();
+
+  // LinkedIn profile from localStorage (synced by extension)
+  const [linkedInProfile, setLinkedInProfile] = useState<LinkedInProfile | null>(() => {
+    const stored = localStorage.getItem("linkedbot_profile_data");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  // Listen for profile updates from extension
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
+        const profile = event.data.payload as LinkedInProfile;
+        setLinkedInProfile(profile);
+        localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   const isLoading = postsLoading || agentsLoading || subLoading || profileLoading || extensionLoading;
 
@@ -209,6 +239,34 @@ const Dashboard = () => {
                   </Link>
                 </Button>
               </div>
+
+              {/* LinkedIn Profile Display */}
+              {extensionStatus.isConnected && linkedInProfile && (
+                <div className="mt-4 pt-4 border-t border-success/20">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-12 h-12 border-2 border-success/20">
+                      <AvatarImage src={linkedInProfile.image || undefined} alt={linkedInProfile.name} />
+                      <AvatarFallback className="bg-success/10 text-success">
+                        <User className="w-5 h-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{linkedInProfile.name}</p>
+                      <p className="text-sm text-muted-foreground truncate">{linkedInProfile.headline}</p>
+                      <p className="text-xs text-muted-foreground">{linkedInProfile.followers} followers</p>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <a 
+                        href={linkedInProfile.profileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
