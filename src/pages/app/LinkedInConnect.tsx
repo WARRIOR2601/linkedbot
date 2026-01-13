@@ -40,7 +40,7 @@ interface LinkedInProfile {
 
 const LinkedInConnect = () => {
   const navigate = useNavigate();
-  const { extensionStatus, analytics, isLoading, revokeSession } = useExtension();
+  const { extensionStatus, analytics, isLoading, revokeSession, generateToken } = useExtension();
   const [isConnecting, setIsConnecting] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -52,6 +52,37 @@ const LinkedInConnect = () => {
     const stored = localStorage.getItem("linkedbot_profile_data");
     return stored ? JSON.parse(stored) : null;
   });
+  const [tokenSynced, setTokenSynced] = useState(false);
+
+  // Generate and sync token to extension
+  const syncTokenToExtension = useCallback(async () => {
+    if (tokenSynced) return;
+    
+    try {
+      console.log("[LinkedBot] Generating extension token...");
+      const token = await generateToken.mutateAsync();
+      console.log("[LinkedBot] Token generated, syncing to extension");
+      
+      // Send token to extension via chrome.runtime.sendMessage
+      if (window.chrome?.runtime?.sendMessage) {
+        window.chrome.runtime.sendMessage(EXTENSION_ID, { 
+          type: "LINKEDBOT_SYNC_TOKEN", 
+          token 
+        }, (response) => {
+          if (window.chrome?.runtime?.lastError) {
+            console.debug("[LinkedBot] Token sync: Extension not available");
+          } else {
+            console.log("[LinkedBot] Token synced to extension:", response);
+            setTokenSynced(true);
+            toast.success("Extension authenticated for posting!");
+          }
+        });
+      }
+    } catch (error) {
+      console.error("[LinkedBot] Failed to generate token:", error);
+      toast.error("Failed to authenticate extension");
+    }
+  }, [generateToken, tokenSynced]);
 
   // Auto-detect extension on mount and listen for connection events
   useEffect(() => {
@@ -76,6 +107,9 @@ const LinkedInConnect = () => {
           toast.success("Chrome Extension connected successfully!");
         }
         if (timeoutId) clearTimeout(timeoutId);
+        
+        // Generate and sync token for API authentication
+        syncTokenToExtension();
         
         // Request profile data refresh after connection using chrome.runtime.sendMessage
         console.log("[LinkedBot] Requesting profile data after connection");
@@ -123,12 +157,17 @@ const LinkedInConnect = () => {
         setIsConnecting(false);
       }, 5000);
     }
+    
+    // If already connected, ensure token is synced
+    if ((localConnected || extensionStatus.isConnected) && !tokenSynced) {
+      syncTokenToExtension();
+    }
 
     return () => {
       window.removeEventListener("message", handleMessage);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [autoDetectionAttempted, localConnected, extensionStatus.isConnected]);
+  }, [autoDetectionAttempted, localConnected, extensionStatus.isConnected, syncTokenToExtension, tokenSynced]);
 
   // Derive final connected state
   const isConnected = extensionStatus.isConnected || localConnected;
