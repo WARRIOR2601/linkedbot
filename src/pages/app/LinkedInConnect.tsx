@@ -145,10 +145,31 @@ const LinkedInConnect = () => {
       setAutoDetectionAttempted(true);
       setIsConnecting(true);
       
-      console.log("[LinkedBot] Sending auto-detection request");
+      console.log("[LinkedBot] Sending auto-detection request via chrome.runtime.sendMessage");
       
-      // Send initial detection request
-      window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+      // Try chrome.runtime.sendMessage first (more reliable for external extensions)
+      if (window.chrome?.runtime?.sendMessage) {
+        window.chrome.runtime.sendMessage(EXTENSION_ID, { type: "LINKEDBOT_PING" }, (response) => {
+          if (window.chrome?.runtime?.lastError) {
+            console.log("[LinkedBot] Extension not responding via runtime:", window.chrome.runtime.lastError.message);
+            // Fallback to postMessage
+            window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+          } else if (response?.connected) {
+            console.log("[LinkedBot] Extension responded - connected!");
+            setIsConnecting(false);
+            setLocalConnected(true);
+            localStorage.setItem("linkedbot_extension_connected", "true");
+            toast.success("Chrome Extension connected successfully!");
+            if (timeoutId) clearTimeout(timeoutId);
+            syncTokenToExtension();
+            setIsLoadingProfile(true);
+            requestProfileRefresh();
+          }
+        });
+      } else {
+        // Fallback to postMessage
+        window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+      }
       
       // Show helper if no response after 5 seconds
       timeoutId = setTimeout(() => {
@@ -177,13 +198,32 @@ const LinkedInConnect = () => {
     setShowHelper(false);
     setIsLoadingProfile(true);
 
-    // Send message to extension via postMessage for connection
-    window.postMessage(
-      { type: "LINKEDBOT_CONNECT_REQUEST" },
-      "*"
-    );
+    console.log("[LinkedBot] Retry connection via chrome.runtime.sendMessage");
+    
+    // Try chrome.runtime.sendMessage first (more reliable)
+    if (window.chrome?.runtime?.sendMessage) {
+      window.chrome.runtime.sendMessage(EXTENSION_ID, { type: "LINKEDBOT_PING" }, (response) => {
+        if (window.chrome?.runtime?.lastError) {
+          console.log("[LinkedBot] Extension not responding:", window.chrome.runtime.lastError.message);
+          // Also try postMessage as fallback
+          window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+        } else if (response?.connected) {
+          console.log("[LinkedBot] Extension connected via retry!");
+          setIsConnecting(false);
+          setLocalConnected(true);
+          localStorage.setItem("linkedbot_extension_connected", "true");
+          toast.success("Chrome Extension connected successfully!");
+          syncTokenToExtension();
+          requestProfileRefresh();
+          return;
+        }
+      });
+    } else {
+      // Fallback to postMessage
+      window.postMessage({ type: "LINKEDBOT_CONNECT_REQUEST" }, "*");
+    }
 
-    // Also request profile data refresh using chrome.runtime.sendMessage
+    // Also request profile data refresh
     setTimeout(() => {
       requestProfileRefresh();
     }, 500);
@@ -194,7 +234,7 @@ const LinkedInConnect = () => {
       setIsConnecting(false);
       setIsLoadingProfile(false);
     }, 5000);
-  }, []);
+  }, [syncTokenToExtension]);
 
   const handleDisconnect = async () => {
     try {
