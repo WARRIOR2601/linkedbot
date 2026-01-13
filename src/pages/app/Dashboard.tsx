@@ -16,6 +16,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useExtension } from "@/hooks/useExtension";
 import { useAuth } from "@/contexts/AuthContext";
+import { AgentGlobalToggle } from "@/components/agent/AgentGlobalToggle";
+import { ScheduledPostsList } from "@/components/agent/ScheduledPostsList";
 import {
   TrendingUp,
   Bot,
@@ -347,6 +349,9 @@ const Dashboard = () => {
           </Card>
         )}
 
+        {/* Agent Global Toggle */}
+        <AgentGlobalToggle />
+
         {/* Agent Slots Card */}
         <Card className="border-muted">
           <CardContent className="p-4">
@@ -600,55 +605,8 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Upcoming Posts */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Upcoming Posts</CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/app/calendar">View All</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {upcomingPosts.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No scheduled posts</p>
-                  <p className="text-xs">Activate an agent to start posting</p>
-                </div>
-              ) : (
-                upcomingPosts.map((post) => {
-                  const agent = getAgentForPost(post.agent_id);
-                  return (
-                    <div
-                      key={post.id}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <Bot className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">
-                          {agent?.name || "Agent"}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {post.content.slice(0, 50)}...
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {post.scheduled_at && format(parseISO(post.scheduled_at), "MMM d 'at' h:mm a")}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <Button variant="outline" className="w-full" asChild>
-                <Link to="/app/agents/new">
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Create New Agent
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Scheduled Posts Management */}
+          <ScheduledPostsList maxPosts={5} />
         </div>
 
         {/* Performance Overview */}
