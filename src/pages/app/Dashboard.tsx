@@ -82,39 +82,54 @@ const Dashboard = () => {
   });
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
-  // Listen for profile updates from extension and request refresh on mount
+  // Track previous connection state to detect changes
+  const [wasConnected, setWasConnected] = useState(extensionStatus.isConnected);
+
+  // Listen for profile updates from extension
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
+        console.log("[Dashboard] Received profile data from extension:", event.data.payload);
         setIsLoadingProfile(false);
         const profile = event.data.payload as LinkedInProfile;
         setLinkedInProfile(profile);
         localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
       }
-      // Also handle connection event to trigger profile refresh using chrome.runtime.sendMessage
+      // Also handle connection event to trigger profile refresh
       if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
-        console.log("[Dashboard] Extension connected - requesting profile refresh");
+        console.log("[Dashboard] Extension connected event - requesting profile refresh via chrome.runtime.sendMessage");
         setIsLoadingProfile(true);
         requestProfileRefresh();
       }
     };
     window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
-    // Request profile refresh on mount if extension is connected but no profile
-    if (extensionStatus.isConnected && !linkedInProfile) {
-      console.log("[Dashboard] Extension connected but no profile - requesting refresh");
+  // Request profile when extension status changes to connected
+  useEffect(() => {
+    // Detect connection state change: was disconnected, now connected
+    if (!wasConnected && extensionStatus.isConnected) {
+      console.log("[Dashboard] Extension status changed to connected - requesting profile via chrome.runtime.sendMessage");
       setIsLoadingProfile(true);
       requestProfileRefresh();
-      // Timeout to stop loading if no response
+      // Timeout fallback
       const timeout = setTimeout(() => setIsLoadingProfile(false), 5000);
-      return () => {
-        window.removeEventListener("message", handleMessage);
-        clearTimeout(timeout);
-      };
+      return () => clearTimeout(timeout);
     }
+    setWasConnected(extensionStatus.isConnected);
+  }, [extensionStatus.isConnected, wasConnected]);
 
-    return () => window.removeEventListener("message", handleMessage);
-  }, [extensionStatus.isConnected, linkedInProfile]);
+  // Request profile on mount if connected but no profile data
+  useEffect(() => {
+    if (extensionStatus.isConnected && !linkedInProfile && !isLoadingProfile) {
+      console.log("[Dashboard] On mount: connected but no profile - requesting via chrome.runtime.sendMessage");
+      setIsLoadingProfile(true);
+      requestProfileRefresh();
+      const timeout = setTimeout(() => setIsLoadingProfile(false), 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, []);
 
   const isLoading = postsLoading || agentsLoading || subLoading || profileLoading || extensionLoading;
 
