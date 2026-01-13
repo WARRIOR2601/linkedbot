@@ -48,11 +48,53 @@ export const triggerExtensionForceCheck = () => {
 };
 
 /**
- * Request profile data refresh from extension via window.postMessage
+ * Request profile data refresh from extension via chrome.runtime.sendMessage
  */
 export const requestProfileRefresh = () => {
-  if (typeof window !== 'undefined') {
-    console.debug("[LinkedBot] Requesting profile refresh");
+  if (typeof window !== 'undefined' && 
+      window.chrome && 
+      window.chrome.runtime && 
+      window.chrome.runtime.sendMessage) {
+    try {
+      console.debug("[LinkedBot] Requesting profile refresh via chrome.runtime.sendMessage");
+      window.chrome.runtime.sendMessage(EXTENSION_ID, { type: "LINKEDBOT_REQUEST_PROFILE" }, (response) => {
+        if (window.chrome?.runtime?.lastError) {
+          console.debug("[LinkedBot] Profile refresh: Extension not available, falling back to postMessage");
+          window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+        } else {
+          console.debug("[LinkedBot] Profile refresh response:", response);
+        }
+      });
+    } catch (error) {
+      console.debug("[LinkedBot] Profile refresh failed, falling back to postMessage", error);
+      window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+    }
+  } else {
+    // Fallback to postMessage if chrome API not available
+    console.debug("[LinkedBot] Requesting profile refresh via postMessage (fallback)");
     window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+  }
+};
+
+/**
+ * Send disconnect message to extension
+ */
+export const disconnectExtension = () => {
+  if (typeof window !== 'undefined' && 
+      window.chrome && 
+      window.chrome.runtime && 
+      window.chrome.runtime.sendMessage) {
+    try {
+      console.debug("[LinkedBot] Sending disconnect message to extension");
+      window.chrome.runtime.sendMessage(EXTENSION_ID, { type: "LINKEDBOT_DISCONNECT" }, (response) => {
+        if (window.chrome?.runtime?.lastError) {
+          console.debug("[LinkedBot] Disconnect: Extension not available");
+        } else {
+          console.debug("[LinkedBot] Disconnect response:", response);
+        }
+      });
+    } catch (error) {
+      console.debug("[LinkedBot] Disconnect failed", error);
+    }
   }
 };

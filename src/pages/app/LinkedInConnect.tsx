@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useExtension } from "@/hooks/useExtension";
+import { requestProfileRefresh, disconnectExtension, EXTENSION_ID } from "@/lib/extension-messaging";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -26,7 +27,8 @@ import {
 import { useNavigate } from "react-router-dom";
 
 // Extension ID only used for Chrome Web Store link (not for redirects)
-const EXTENSION_ID = "fkledgmccgjmeilmnnmopakcaneafgd";
+const WEBSTORE_EXTENSION_ID = "fkledgmccgjmeilmnnmopakcaneafgd";
+
 
 interface LinkedInProfile {
   name: string;
@@ -41,6 +43,7 @@ const LinkedInConnect = () => {
   const { extensionStatus, analytics, isLoading, revokeSession } = useExtension();
   const [isConnecting, setIsConnecting] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [localConnected, setLocalConnected] = useState(() => {
     return localStorage.getItem("linkedbot_extension_connected") === "true";
   });
@@ -74,9 +77,10 @@ const LinkedInConnect = () => {
         }
         if (timeoutId) clearTimeout(timeoutId);
         
-        // Request profile data refresh after connection
+        // Request profile data refresh after connection using chrome.runtime.sendMessage
         console.log("[LinkedBot] Requesting profile data after connection");
-        window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+        setIsLoadingProfile(true);
+        requestProfileRefresh();
       }
       
       // Handle extension not connected event
@@ -92,6 +96,7 @@ const LinkedInConnect = () => {
       // Handle LinkedIn profile data from extension
       if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
         console.log("[LinkedBot] Profile data received:", event.data.payload);
+        setIsLoadingProfile(false);
         const profile = event.data.payload as LinkedInProfile;
         setLinkedInProfile(profile);
         localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
@@ -131,30 +136,36 @@ const LinkedInConnect = () => {
   const handleRetryConnection = useCallback(() => {
     setIsConnecting(true);
     setShowHelper(false);
+    setIsLoadingProfile(true);
 
-    // Send message to extension via postMessage
+    // Send message to extension via postMessage for connection
     window.postMessage(
       { type: "LINKEDBOT_CONNECT_REQUEST" },
       "*"
     );
 
-    // Also request profile data refresh
+    // Also request profile data refresh using chrome.runtime.sendMessage
     setTimeout(() => {
-      window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+      requestProfileRefresh();
     }, 500);
 
     // Show helper message if no response after 5 seconds
     setTimeout(() => {
       setShowHelper(true);
       setIsConnecting(false);
+      setIsLoadingProfile(false);
     }, 5000);
   }, []);
 
   const handleDisconnect = async () => {
     try {
+      // Send disconnect message to extension
+      disconnectExtension();
+      
       await revokeSession.mutateAsync();
       setLocalConnected(false);
       setLinkedInProfile(null);
+      setIsLoadingProfile(false);
       localStorage.removeItem("linkedbot_extension_connected");
       localStorage.removeItem("linkedbot_profile_data");
       toast.success("Extension disconnected");
@@ -293,39 +304,68 @@ const LinkedInConnect = () => {
                 </div>
 
                 {/* LinkedIn Profile Card */}
-                {isConnected && linkedInProfile && (
+                {isConnected && (
                   <div className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="w-14 h-14 border-2 border-primary/20">
-                        <AvatarImage src={linkedInProfile.image || undefined} alt={linkedInProfile.name} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          <User className="w-6 h-6" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{linkedInProfile.name}</h3>
-                        <p className="text-sm text-muted-foreground truncate">{linkedInProfile.headline}</p>
-                        <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-                          <Users className="w-3 h-3" />
-                          <span>{linkedInProfile.followers} followers</span>
+                    {isLoadingProfile ? (
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="w-14 h-14 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-48" />
+                          <Skeleton className="h-3 w-24" />
                         </div>
                       </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full mt-3"
-                      asChild
-                    >
-                      <a 
-                        href={linkedInProfile.profileUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
-                        View LinkedIn Profile
-                        <ExternalLink className="w-3 h-3 ml-2" />
-                      </a>
-                    </Button>
+                    ) : linkedInProfile ? (
+                      <>
+                        <div className="flex items-center gap-4">
+                          <Avatar className="w-14 h-14 border-2 border-primary/20">
+                            <AvatarImage src={linkedInProfile.image || undefined} alt={linkedInProfile.name} />
+                            <AvatarFallback className="bg-primary/10 text-primary">
+                              <User className="w-6 h-6" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold truncate">{linkedInProfile.name}</h3>
+                            <p className="text-sm text-muted-foreground truncate">{linkedInProfile.headline}</p>
+                            <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+                              <Users className="w-3 h-3" />
+                              <span>{linkedInProfile.followers} followers</span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full mt-3"
+                          asChild
+                        >
+                          <a 
+                            href={linkedInProfile.profileUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            View LinkedIn Profile
+                            <ExternalLink className="w-3 h-3 ml-2" />
+                          </a>
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="text-center py-2 text-sm text-muted-foreground">
+                        <p>Profile not synced yet</p>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="text-primary"
+                          onClick={() => {
+                            setIsLoadingProfile(true);
+                            requestProfileRefresh();
+                            setTimeout(() => setIsLoadingProfile(false), 5000);
+                          }}
+                        >
+                          Refresh Profile
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -398,7 +438,7 @@ const LinkedInConnect = () => {
                 </ol>
                 <Button variant="outline" className="w-full mt-4" asChild>
                   <a
-                    href={`https://chrome.google.com/webstore/detail/${EXTENSION_ID}`}
+                    href={`https://chrome.google.com/webstore/detail/${WEBSTORE_EXTENSION_ID}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
