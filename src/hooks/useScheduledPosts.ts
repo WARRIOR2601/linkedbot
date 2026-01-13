@@ -201,6 +201,47 @@ export const useScheduledPosts = () => {
     },
   });
 
+  // Create a new scheduled post
+  const createPost = useMutation({
+    mutationFn: async ({ 
+      content, 
+      scheduledFor, 
+      agentId 
+    }: { 
+      content: string; 
+      scheduledFor: Date; 
+      agentId?: string | null;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const { error } = await supabase
+        .from("scheduled_posts")
+        .insert({
+          user_id: user.id,
+          content,
+          scheduled_for: scheduledFor.toISOString(),
+          agent_id: agentId || null,
+          status: "pending",
+        });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scheduled-posts"] });
+      toast({
+        title: "Post scheduled",
+        description: "Your post has been scheduled successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Filter to get pending posts only (what extension sees)
   const pendingPosts = scheduledPosts.filter(p => p.status === "pending");
   const pausedPosts = scheduledPosts.filter(p => p.status === "paused");
@@ -221,6 +262,8 @@ export const useScheduledPosts = () => {
     deletePost: deletePost.mutate,
     reschedulePost: reschedulePost.mutate,
     updatePostStatus: updatePostStatus.mutate,
-    isUpdating: updatePostStatus.isPending || postNow.isPending || skipPost.isPending || togglePause.isPending || reschedulePost.isPending,
+    createPost: createPost.mutate,
+    isUpdating: updatePostStatus.isPending || postNow.isPending || skipPost.isPending || togglePause.isPending || reschedulePost.isPending || createPost.isPending,
+    isCreating: createPost.isPending,
   };
 };

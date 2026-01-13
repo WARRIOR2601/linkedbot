@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { format, formatDistanceToNow, parseISO, isPast, setHours, setMinutes } from "date-fns";
+import { format, formatDistanceToNow, parseISO, isPast, setHours, setMinutes, addMinutes, addDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -34,6 +35,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Play,
   Pause,
   SkipForward,
@@ -46,6 +54,8 @@ import {
   AlertTriangle,
   Send,
   CalendarClock,
+  Plus,
+  FileText,
 } from "lucide-react";
 import { useScheduledPosts, ScheduledPost, ScheduledPostStatus } from "@/hooks/useScheduledPosts";
 import { useAgents } from "@/hooks/useAgents";
@@ -72,6 +82,210 @@ const getStatusBadge = (status: ScheduledPostStatus) => {
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
+};
+
+// Quick schedule options
+const QUICK_SCHEDULE_OPTIONS = [
+  { label: "In 10 minutes", value: () => addMinutes(new Date(), 10) },
+  { label: "In 1 hour", value: () => addMinutes(new Date(), 60) },
+  { label: "In 3 hours", value: () => addMinutes(new Date(), 180) },
+  { label: "Tomorrow 9 AM", value: () => setHours(setMinutes(addDays(new Date(), 1), 0), 9) },
+  { label: "Tomorrow 12 PM", value: () => setHours(setMinutes(addDays(new Date(), 1), 0), 12) },
+  { label: "Custom", value: null },
+];
+
+const CreatePostDialog = ({
+  onCreatePost,
+  isCreating,
+  agents,
+}: {
+  onCreatePost: (data: { content: string; scheduledFor: Date; agentId?: string | null }) => void;
+  isCreating: boolean;
+  agents: { id: string; name: string }[];
+}) => {
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState("");
+  const [selectedAgent, setSelectedAgent] = useState<string>("");
+  const [scheduleType, setScheduleType] = useState<string>("quick");
+  const [quickOption, setQuickOption] = useState<string>("In 1 hour");
+  const [customDate, setCustomDate] = useState<Date>(addDays(new Date(), 1));
+  const [customTime, setCustomTime] = useState("09:00");
+
+  const getScheduledDate = () => {
+    if (scheduleType === "quick") {
+      const option = QUICK_SCHEDULE_OPTIONS.find(o => o.label === quickOption);
+      return option?.value ? option.value() : new Date();
+    } else {
+      const [hours, minutes] = customTime.split(":").map(Number);
+      return setMinutes(setHours(customDate, hours), minutes);
+    }
+  };
+
+  const handleCreate = () => {
+    if (!content.trim()) return;
+    const scheduledFor = getScheduledDate();
+    onCreatePost({
+      content: content.trim(),
+      scheduledFor,
+      agentId: selectedAgent || null,
+    });
+    setOpen(false);
+    setContent("");
+    setSelectedAgent("");
+    setScheduleType("quick");
+    setQuickOption("In 1 hour");
+  };
+
+  const scheduledDate = getScheduledDate();
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="w-4 h-4 mr-1" />
+          Schedule Post
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Schedule a New Post</DialogTitle>
+          <DialogDescription>
+            Write your LinkedIn post content and choose when to publish it.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {/* Post Content */}
+          <div className="space-y-2">
+            <Label htmlFor="content">Post Content</Label>
+            <Textarea
+              id="content"
+              placeholder="Write your LinkedIn post here..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-[150px] resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {content.length} characters
+            </p>
+          </div>
+
+          {/* Agent Selection */}
+          {agents.length > 0 && (
+            <div className="space-y-2">
+              <Label>Associate with Agent (optional)</Label>
+              <Select value={selectedAgent} onValueChange={setSelectedAgent}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No agent" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No agent</SelectItem>
+                  {agents.map(agent => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-3 h-3" />
+                        {agent.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Schedule Type */}
+          <div className="space-y-2">
+            <Label>When to post</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={scheduleType === "quick" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setScheduleType("quick")}
+              >
+                Quick Options
+              </Button>
+              <Button
+                type="button"
+                variant={scheduleType === "custom" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setScheduleType("custom")}
+              >
+                Custom Date & Time
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Schedule Options */}
+          {scheduleType === "quick" && (
+            <div className="grid grid-cols-2 gap-2">
+              {QUICK_SCHEDULE_OPTIONS.filter(o => o.value).map(option => (
+                <Button
+                  key={option.label}
+                  type="button"
+                  variant={quickOption === option.label ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setQuickOption(option.label)}
+                  className="justify-start"
+                >
+                  <Clock className="w-3 h-3 mr-2" />
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {/* Custom Date/Time */}
+          {scheduleType === "custom" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Date</Label>
+                <Calendar
+                  mode="single"
+                  selected={customDate}
+                  onSelect={(date) => date && setCustomDate(date)}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  className="rounded-md border"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="customTime">Select Time</Label>
+                <Input
+                  id="customTime"
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Preview */}
+          <div className="p-3 rounded-lg bg-muted/50 text-sm border">
+            <p className="font-medium flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4" />
+              Scheduled for:
+            </p>
+            <p className="text-muted-foreground mt-1">
+              {format(scheduledDate, "EEEE, MMMM d, yyyy 'at' h:mm a")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              ({formatDistanceToNow(scheduledDate, { addSuffix: true })})
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleCreate} disabled={isCreating || !content.trim()}>
+            <CalendarClock className="w-4 h-4 mr-2" />
+            Schedule Post
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const RescheduleDialog = ({
@@ -314,7 +528,9 @@ export const ScheduledPostsList = ({
     togglePause, 
     deletePost,
     reschedulePost,
+    createPost,
     isUpdating,
+    isCreating,
   } = useScheduledPosts();
   const { agents } = useAgents();
 
@@ -330,6 +546,11 @@ export const ScheduledPostsList = ({
     : scheduledPosts
         .filter(p => p.status === "pending" || p.status === "paused")
         .slice(0, maxPosts);
+
+  // Next upcoming post
+  const nextPost = scheduledPosts
+    .filter(p => p.status === "pending" && new Date(p.scheduled_for) > new Date())
+    .sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime())[0];
 
   if (isLoading) {
     return (
@@ -353,23 +574,40 @@ export const ScheduledPostsList = ({
 
   return (
     <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5" />
-          Scheduled Posts
-          {scheduledPosts.filter(p => p.status === "pending").length > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {scheduledPosts.filter(p => p.status === "pending").length} pending
-            </Badge>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div className="flex-1">
+          <CardTitle className="flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5" />
+            Scheduled Posts
+            {scheduledPosts.filter(p => p.status === "pending").length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {scheduledPosts.filter(p => p.status === "pending").length} pending
+              </Badge>
+            )}
+          </CardTitle>
+          {nextPost && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Next: {format(parseISO(nextPost.scheduled_for), "MMM d 'at' h:mm a")} ({formatDistanceToNow(parseISO(nextPost.scheduled_for), { addSuffix: true })})
+            </p>
           )}
-        </CardTitle>
+        </div>
+        <CreatePostDialog
+          onCreatePost={createPost}
+          isCreating={isCreating}
+          agents={agents.map(a => ({ id: a.id, name: a.name }))}
+        />
       </CardHeader>
       <CardContent>
         {displayPosts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">No scheduled posts</p>
-            <p className="text-sm">Your agent will create posts based on your settings</p>
+            <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">No scheduled posts yet</p>
+            <p className="text-sm mb-4">Create your first post to see it here</p>
+            <CreatePostDialog
+              onCreatePost={createPost}
+              isCreating={isCreating}
+              agents={agents.map(a => ({ id: a.id, name: a.name }))}
+            />
           </div>
         ) : (
           <ScrollArea className={showAll ? "h-[500px]" : ""}>
