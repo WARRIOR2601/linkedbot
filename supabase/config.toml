@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.analytics-latest]
 verify_jwt = false
+
+[functions.get-profile-status]
+verify_jwt = false
