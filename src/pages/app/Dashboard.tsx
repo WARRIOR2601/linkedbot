@@ -80,7 +80,7 @@ const Dashboard = () => {
     return stored ? JSON.parse(stored) : null;
   });
 
-  // Listen for profile updates from extension
+  // Listen for profile updates from extension and request refresh on mount
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
@@ -88,10 +88,22 @@ const Dashboard = () => {
         setLinkedInProfile(profile);
         localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
       }
+      // Also handle connection event to trigger profile refresh
+      if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
+        console.log("[Dashboard] Extension connected - requesting profile refresh");
+        window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+      }
     };
     window.addEventListener("message", handleMessage);
+
+    // Request profile refresh on mount if extension is connected
+    if (extensionStatus.isConnected && !linkedInProfile) {
+      console.log("[Dashboard] Extension connected but no profile - requesting refresh");
+      window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+    }
+
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [extensionStatus.isConnected, linkedInProfile]);
 
   const isLoading = postsLoading || agentsLoading || subLoading || profileLoading || extensionLoading;
 
