@@ -15,6 +15,7 @@ import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } f
 import { useSubscription } from "@/hooks/useSubscription";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useExtension } from "@/hooks/useExtension";
+import { requestProfileRefresh } from "@/lib/extension-messaging";
 import { useAuth } from "@/contexts/AuthContext";
 import { AgentGlobalToggle } from "@/components/agent/AgentGlobalToggle";
 import { ScheduledPostsList } from "@/components/agent/ScheduledPostsList";
@@ -79,27 +80,37 @@ const Dashboard = () => {
     const stored = localStorage.getItem("linkedbot_profile_data");
     return stored ? JSON.parse(stored) : null;
   });
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   // Listen for profile updates from extension and request refresh on mount
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "LINKEDBOT_PROFILE_DATA") {
+        setIsLoadingProfile(false);
         const profile = event.data.payload as LinkedInProfile;
         setLinkedInProfile(profile);
         localStorage.setItem("linkedbot_profile_data", JSON.stringify(profile));
       }
-      // Also handle connection event to trigger profile refresh
+      // Also handle connection event to trigger profile refresh using chrome.runtime.sendMessage
       if (event.data?.type === "LINKEDBOT_EXTENSION_CONNECTED") {
         console.log("[Dashboard] Extension connected - requesting profile refresh");
-        window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+        setIsLoadingProfile(true);
+        requestProfileRefresh();
       }
     };
     window.addEventListener("message", handleMessage);
 
-    // Request profile refresh on mount if extension is connected
+    // Request profile refresh on mount if extension is connected but no profile
     if (extensionStatus.isConnected && !linkedInProfile) {
       console.log("[Dashboard] Extension connected but no profile - requesting refresh");
-      window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+      setIsLoadingProfile(true);
+      requestProfileRefresh();
+      // Timeout to stop loading if no response
+      const timeout = setTimeout(() => setIsLoadingProfile(false), 5000);
+      return () => {
+        window.removeEventListener("message", handleMessage);
+        clearTimeout(timeout);
+      };
     }
 
     return () => window.removeEventListener("message", handleMessage);
@@ -257,7 +268,16 @@ const Dashboard = () => {
               {/* LinkedIn Profile Display - Always show */}
               <div className="mt-4 pt-4 border-t border-border/50">
                 <p className="text-xs text-muted-foreground mb-3">Connected LinkedIn Account</p>
-                {linkedInProfile ? (
+                {isLoadingProfile ? (
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-40" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                ) : linkedInProfile ? (
                   <div className="flex items-center gap-3">
                     <Avatar className="w-12 h-12 border-2 border-primary/20">
                       <AvatarImage src={linkedInProfile.image || undefined} alt={linkedInProfile.name} />
