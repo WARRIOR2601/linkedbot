@@ -3,11 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Power, AlertCircle } from "lucide-react";
+import { Power, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { triggerExtensionForceCheck } from "@/lib/extension-messaging";
 
 interface AgentGlobalToggleProps {
   className?: string;
@@ -63,6 +64,11 @@ export const AgentGlobalToggle = ({ className }: AgentGlobalToggleProps) => {
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
+      
+      // Send FORCE_CHECK to extension when agent is activated
+      if (checked) {
+        triggerExtensionForceCheck();
+      }
       
       toast({
         title: checked ? "Agent Activated" : "Agent Deactivated",
