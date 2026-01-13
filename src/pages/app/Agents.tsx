@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useAgents, AGENT_TYPES, Agent, AgentStatus, getStatusColor, getStatusLabel } from "@/hooks/useAgents";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useExtension } from "@/hooks/useExtension";
 import {
   Bot,
   Plus,
@@ -20,6 +21,8 @@ import {
   CheckCircle,
   Crown,
   Zap,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import {
@@ -37,6 +40,7 @@ import {
 const Agents = () => {
   const { agents, isLoading, toggleAgentStatus, deleteAgent, activateAgent } = useAgents();
   const { subscription, canCreateAgent, isLoading: subLoading } = useSubscription();
+  const { extensionStatus } = useExtension();
 
   const getAgentTypeName = (type: string) => {
     return AGENT_TYPES.find((t) => t.id === type)?.name || type;
@@ -191,6 +195,7 @@ const Agents = () => {
                 onActivate={activateAgent.mutate}
                 onDelete={deleteAgent.mutate}
                 getAgentTypeName={getAgentTypeName}
+                isExtensionConnected={extensionStatus.isConnected}
               />
             ))}
           </div>
@@ -206,6 +211,7 @@ interface AgentCardProps {
   onActivate: (id: string) => void;
   onDelete: (id: string) => void;
   getAgentTypeName: (type: string) => string;
+  isExtensionConnected: boolean;
 }
 
 const AgentCard = ({
@@ -214,6 +220,7 @@ const AgentCard = ({
   onActivate,
   onDelete,
   getAgentTypeName,
+  isExtensionConnected,
 }: AgentCardProps) => {
   const status = agent.status as AgentStatus;
   
@@ -296,11 +303,24 @@ const AgentCard = ({
           </div>
         )}
 
-        {/* Active Agent - LinkedIn Dependency */}
+        {/* Active Agent - LinkedIn Connection Status */}
         {status === "active" && (
-          <div className="p-2 rounded-lg bg-success/5 border border-success/20 text-xs text-muted-foreground">
-            Requires LinkedIn connection to post
-          </div>
+          isExtensionConnected ? (
+            <div className="p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success flex items-center gap-2">
+              <Wifi className="w-3 h-3" />
+              Ready to post via Chrome Extension
+            </div>
+          ) : (
+            <Link 
+              to="/app/linkedin"
+              className="block p-2 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning hover:bg-warning/20 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <WifiOff className="w-3 h-3" />
+                <span>Connect Chrome Extension to post</span>
+              </div>
+            </Link>
+          )
         )}
 
         {/* Actions */}

@@ -1,9 +1,18 @@
-import { format, formatDistanceToNow, parseISO, isPast } from "date-fns";
+import { useState } from "react";
+import { format, formatDistanceToNow, parseISO, isPast, setHours, setMinutes } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,20 +25,31 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Play,
   Pause,
   SkipForward,
   Clock,
-  Calendar,
+  Calendar as CalendarIcon,
   Bot,
   Trash2,
   CheckCircle2,
   XCircle,
   AlertTriangle,
   Send,
+  CalendarClock,
 } from "lucide-react";
 import { useScheduledPosts, ScheduledPost, ScheduledPostStatus } from "@/hooks/useScheduledPosts";
 import { useAgents } from "@/hooks/useAgents";
+import { cn } from "@/lib/utils";
 
 interface ScheduledPostsListProps {
   showAll?: boolean;
@@ -54,6 +74,83 @@ const getStatusBadge = (status: ScheduledPostStatus) => {
   }
 };
 
+const RescheduleDialog = ({
+  post,
+  onReschedule,
+  isUpdating,
+}: {
+  post: ScheduledPost;
+  onReschedule: (date: Date) => void;
+  isUpdating: boolean;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(parseISO(post.scheduled_for));
+  const [time, setTime] = useState(format(parseISO(post.scheduled_for), "HH:mm"));
+
+  const handleReschedule = () => {
+    const [hours, minutes] = time.split(":").map(Number);
+    const newDate = setMinutes(setHours(selectedDate, hours), minutes);
+    onReschedule(newDate);
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <CalendarClock className="w-3 h-3 mr-1" />
+          Reschedule
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Reschedule Post</DialogTitle>
+          <DialogDescription>
+            Choose a new date and time for this post to be published.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Select Date</Label>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+              className="rounded-md border"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="time">Select Time</Label>
+            <Input
+              id="time"
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50 text-sm">
+            <p className="font-medium">Scheduled for:</p>
+            <p className="text-muted-foreground">
+              {format(setMinutes(setHours(selectedDate, parseInt(time.split(":")[0])), parseInt(time.split(":")[1])), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleReschedule} disabled={isUpdating}>
+            <CalendarClock className="w-4 h-4 mr-2" />
+            Reschedule Post
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const PostCard = ({ 
   post, 
   agentName,
@@ -61,6 +158,7 @@ const PostCard = ({
   onSkip, 
   onTogglePause,
   onDelete,
+  onReschedule,
   isUpdating,
 }: { 
   post: ScheduledPost;
@@ -69,6 +167,7 @@ const PostCard = ({
   onSkip: () => void;
   onTogglePause: () => void;
   onDelete: () => void;
+  onReschedule: (date: Date) => void;
   isUpdating: boolean;
 }) => {
   const scheduledDate = parseISO(post.scheduled_for);
@@ -95,7 +194,7 @@ const PostCard = ({
           )}
         </div>
         <div className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-          <Calendar className="w-3 h-3" />
+          <CalendarIcon className="w-3 h-3" />
           {format(scheduledDate, "MMM d, h:mm a")}
         </div>
       </div>
@@ -114,17 +213,22 @@ const PostCard = ({
 
       {/* Actions */}
       {canModify && (
-        <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/50">
           <Button
             variant="default"
             size="sm"
             onClick={onPostNow}
             disabled={isUpdating}
-            className="flex-1"
           >
             <Send className="w-3 h-3 mr-1" />
             Post Now
           </Button>
+          
+          <RescheduleDialog
+            post={post}
+            onReschedule={onReschedule}
+            isUpdating={isUpdating}
+          />
           
           <Button
             variant="outline"
@@ -209,6 +313,7 @@ export const ScheduledPostsList = ({
     skipPost, 
     togglePause, 
     deletePost,
+    reschedulePost,
     isUpdating,
   } = useScheduledPosts();
   const { agents } = useAgents();
@@ -231,7 +336,7 @@ export const ScheduledPostsList = ({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
+            <CalendarIcon className="w-5 h-5" />
             Scheduled Posts
           </CardTitle>
         </CardHeader>
@@ -250,7 +355,7 @@ export const ScheduledPostsList = ({
     <Card className={className}>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
+          <CalendarIcon className="w-5 h-5" />
           Scheduled Posts
           {scheduledPosts.filter(p => p.status === "pending").length > 0 && (
             <Badge variant="secondary" className="ml-2">
@@ -262,7 +367,7 @@ export const ScheduledPostsList = ({
       <CardContent>
         {displayPosts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <CalendarIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="font-medium">No scheduled posts</p>
             <p className="text-sm">Your agent will create posts based on your settings</p>
           </div>
@@ -278,6 +383,7 @@ export const ScheduledPostsList = ({
                   onSkip={() => skipPost(post.id)}
                   onTogglePause={() => togglePause({ postId: post.id, currentStatus: post.status })}
                   onDelete={() => deletePost(post.id)}
+                  onReschedule={(date) => reschedulePost({ postId: post.id, scheduledFor: date })}
                   isUpdating={isUpdating}
                 />
               ))}
