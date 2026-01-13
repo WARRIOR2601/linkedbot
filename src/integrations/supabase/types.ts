@@ -154,6 +154,7 @@ export type Database = {
       client_ai_profiles: {
         Row: {
           account_status: string
+          agent_active: boolean | null
           business_name: string | null
           created_at: string
           description: string | null
@@ -169,6 +170,7 @@ export type Database = {
         }
         Insert: {
           account_status?: string
+          agent_active?: boolean | null
           business_name?: string | null
           created_at?: string
           description?: string | null
@@ -184,6 +186,7 @@ export type Database = {
         }
         Update: {
           account_status?: string
+          agent_active?: boolean | null
           business_name?: string | null
           created_at?: string
           description?: string | null

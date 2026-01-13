@@ -14,6 +14,7 @@ export interface OnboardingProfile {
   posting_frequency: string | null;
   is_complete: boolean;
   account_status: string;
+  agent_active: boolean;
   created_at: string;
   updated_at: string;
 }
