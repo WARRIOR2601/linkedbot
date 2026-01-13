@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { format, addMinutes, addHours, addDays, setHours, setMinutes } from "date-fns";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -16,10 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useAgents, AGENT_TYPES, POSTING_FREQUENCIES, WEEKDAYS, IMAGE_STYLES, CreateAgentInput } from "@/hooks/useAgents";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Bot,
   ArrowLeft,
@@ -37,6 +45,8 @@ import {
   Check,
   RefreshCw,
   Loader2,
+  CalendarIcon,
+  Send,
 } from "lucide-react";
 
 const TOTAL_STEPS = 7;
@@ -70,6 +80,32 @@ const CreateAgent = () => {
   const [samplePostInput, setSamplePostInput] = useState("");
   const [previewPosts, setPreviewPosts] = useState<string[]>([]);
   const [isGeneratingPreviews, setIsGeneratingPreviews] = useState(false);
+
+  // First post scheduling state
+  const [scheduleFirstPost, setScheduleFirstPost] = useState(false);
+  const [firstPostTiming, setFirstPostTiming] = useState<string>("10min");
+  const [customFirstPostDate, setCustomFirstPostDate] = useState<Date>(addDays(new Date(), 1));
+  const [customFirstPostTime, setCustomFirstPostTime] = useState("09:00");
+
+  // Quick timing options for first post
+  const FIRST_POST_TIMINGS = [
+    { id: "10min", label: "In 10 minutes", getDate: () => addMinutes(new Date(), 10) },
+    { id: "30min", label: "In 30 minutes", getDate: () => addMinutes(new Date(), 30) },
+    { id: "1hour", label: "In 1 hour", getDate: () => addHours(new Date(), 1) },
+    { id: "3hours", label: "In 3 hours", getDate: () => addHours(new Date(), 3) },
+    { id: "tomorrow9am", label: "Tomorrow 9 AM", getDate: () => setHours(setMinutes(addDays(new Date(), 1), 0), 9) },
+    { id: "tomorrow12pm", label: "Tomorrow 12 PM", getDate: () => setHours(setMinutes(addDays(new Date(), 1), 0), 12) },
+    { id: "custom", label: "Custom date & time", getDate: () => null },
+  ];
+
+  const getFirstPostScheduledDate = (): Date => {
+    if (firstPostTiming === "custom") {
+      const [hours, minutes] = customFirstPostTime.split(":").map(Number);
+      return setMinutes(setHours(customFirstPostDate, hours), minutes);
+    }
+    const option = FIRST_POST_TIMINGS.find(t => t.id === firstPostTiming);
+    return option?.getDate?.() || addMinutes(new Date(), 10);
+  };
 
   const handleAddTopic = () => {
     if (topicInput.trim() && formData.topics && formData.topics.length < 10) {
@@ -148,8 +184,39 @@ const CreateAgent = () => {
   };
 
   const handleSubmit = async () => {
-    await createAgent.mutateAsync(formData);
-    navigate("/app/agents");
+    try {
+      // Create the agent
+      const newAgent = await createAgent.mutateAsync(formData);
+      
+      // If user wants to schedule a first post, generate and schedule it
+      if (scheduleFirstPost && newAgent) {
+        const scheduledDate = getFirstPostScheduledDate();
+        
+        // Generate a first post using AI
+        const { data: generatedData, error: genError } = await supabase.functions.invoke("generate-sample-posts", {
+          body: { agentConfig: formData, count: 1 },
+        });
+
+        if (!genError && generatedData?.posts?.[0]?.content) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Insert into scheduled_posts
+            await supabase.from("scheduled_posts").insert({
+              user_id: user.id,
+              agent_id: newAgent.id,
+              content: generatedData.posts[0].content,
+              scheduled_for: scheduledDate.toISOString(),
+              status: "pending",
+            });
+            toast.success(`First post scheduled for ${format(scheduledDate, "MMM d 'at' h:mm a")}!`);
+          }
+        }
+      }
+      
+      navigate("/app/agents");
+    } catch (error) {
+      console.error("Failed to create agent:", error);
+    }
   };
 
   const isStepValid = () => {
@@ -585,6 +652,97 @@ const CreateAgent = () => {
                         {topic} ×
                       </Badge>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Schedule First Post Option */}
+              <div className="pt-4 border-t space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-primary/5 border-primary/20">
+                  <div className="space-y-0.5">
+                    <Label className="text-base flex items-center gap-2">
+                      <Send className="w-4 h-4 text-primary" />
+                      Schedule First Post
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Generate and schedule a post immediately after creating the agent
+                    </p>
+                  </div>
+                  <Switch
+                    checked={scheduleFirstPost}
+                    onCheckedChange={setScheduleFirstPost}
+                  />
+                </div>
+
+                {scheduleFirstPost && (
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                    <Label>When to post?</Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {FIRST_POST_TIMINGS.map((timing) => (
+                        <Button
+                          key={timing.id}
+                          type="button"
+                          variant={firstPostTiming === timing.id ? "default" : "outline"}
+                          size="sm"
+                          className="justify-start h-auto py-2 px-3"
+                          onClick={() => setFirstPostTiming(timing.id)}
+                        >
+                          <Clock className="w-3 h-3 mr-2 shrink-0" />
+                          <span className="text-xs">{timing.label}</span>
+                        </Button>
+                      ))}
+                    </div>
+
+                    {firstPostTiming === "custom" && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="space-y-2">
+                          <Label>Select Date</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !customFirstPostDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {customFirstPostDate ? format(customFirstPostDate, "PPP") : <span>Pick a date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={customFirstPostDate}
+                                onSelect={(date) => date && setCustomFirstPostDate(date)}
+                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="firstPostTime">Select Time</Label>
+                          <Input
+                            id="firstPostTime"
+                            type="time"
+                            value={customFirstPostTime}
+                            onChange={(e) => setCustomFirstPostTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        First post will be scheduled for:
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {format(getFirstPostScheduledDate(), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
