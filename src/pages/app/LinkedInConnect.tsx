@@ -73,6 +73,10 @@ const LinkedInConnect = () => {
           toast.success("Chrome Extension connected successfully!");
         }
         if (timeoutId) clearTimeout(timeoutId);
+        
+        // Request profile data refresh after connection
+        console.log("[LinkedBot] Requesting profile data after connection");
+        window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
       }
       
       // Handle extension not connected event
@@ -133,6 +137,11 @@ const LinkedInConnect = () => {
       { type: "LINKEDBOT_CONNECT_REQUEST" },
       "*"
     );
+
+    // Also request profile data refresh
+    setTimeout(() => {
+      window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+    }, 500);
 
     // Show helper message if no response after 5 seconds
     setTimeout(() => {

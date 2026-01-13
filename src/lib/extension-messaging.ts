@@ -46,3 +46,13 @@ export const sendExtensionMessage = (message: { type: string; [key: string]: any
 export const triggerExtensionForceCheck = () => {
   sendExtensionMessage({ type: "FORCE_CHECK" });
 };
+
+/**
+ * Request profile data refresh from extension via window.postMessage
+ */
+export const requestProfileRefresh = () => {
+  if (typeof window !== 'undefined') {
+    console.debug("[LinkedBot] Requesting profile refresh");
+    window.postMessage({ type: "LINKEDBOT_REQUEST_PROFILE" }, "*");
+  }
+};
