@@ -147,6 +147,35 @@ export const useScheduledPosts = () => {
     },
   });
 
+  const reschedulePost = useMutation({
+    mutationFn: async ({ postId, scheduledFor }: { postId: string; scheduledFor: Date }) => {
+      const { error } = await supabase
+        .from("scheduled_posts")
+        .update({ 
+          scheduled_for: scheduledFor.toISOString(),
+          status: "pending",
+          updated_at: new Date().toISOString() 
+        })
+        .eq("id", postId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scheduled-posts"] });
+      toast({
+        title: "Post rescheduled",
+        description: "The post has been rescheduled to the new date and time.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const deletePost = useMutation({
     mutationFn: async (postId: string) => {
       const { error } = await supabase
@@ -190,7 +219,8 @@ export const useScheduledPosts = () => {
     skipPost: skipPost.mutate,
     togglePause: togglePause.mutate,
     deletePost: deletePost.mutate,
+    reschedulePost: reschedulePost.mutate,
     updatePostStatus: updatePostStatus.mutate,
-    isUpdating: updatePostStatus.isPending || postNow.isPending || skipPost.isPending || togglePause.isPending,
+    isUpdating: updatePostStatus.isPending || postNow.isPending || skipPost.isPending || togglePause.isPending || reschedulePost.isPending,
   };
 };
