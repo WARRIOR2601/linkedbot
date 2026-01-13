@@ -48,6 +48,39 @@ export const triggerExtensionForceCheck = () => {
 };
 
 /**
+ * Sync authentication token to extension for API calls
+ */
+export const syncTokenToExtension = (token: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && 
+        window.chrome && 
+        window.chrome.runtime && 
+        window.chrome.runtime.sendMessage) {
+      try {
+        console.debug("[LinkedBot] Syncing token to extension");
+        window.chrome.runtime.sendMessage(EXTENSION_ID, { 
+          type: "LINKEDBOT_SYNC_TOKEN", 
+          token 
+        }, (response) => {
+          if (window.chrome?.runtime?.lastError) {
+            console.debug("[LinkedBot] Token sync: Extension not available");
+            resolve(false);
+          } else {
+            console.debug("[LinkedBot] Token sync response:", response);
+            resolve(true);
+          }
+        });
+      } catch (error) {
+        console.debug("[LinkedBot] Token sync failed", error);
+        resolve(false);
+      }
+    } else {
+      resolve(false);
+    }
+  });
+};
+
+/**
  * Request profile data refresh from extension via chrome.runtime.sendMessage
  */
 export const requestProfileRefresh = () => {
