@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { triggerExtensionForceCheck } from "@/lib/extension-messaging";
+import { triggerExtensionForceCheck, broadcastConfigUpdate } from "@/lib/extension-messaging";
 
 interface AgentGlobalToggleProps {
   className?: string;
@@ -64,6 +64,9 @@ export const AgentGlobalToggle = ({ className }: AgentGlobalToggleProps) => {
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
+      
+      // Broadcast config update to extension
+      broadcastConfigUpdate({ agentActive: checked });
       
       // Send FORCE_CHECK to extension when agent is activated
       if (checked) {

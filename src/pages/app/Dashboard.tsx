@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
@@ -15,7 +16,7 @@ import { useAgents, AGENT_TYPES, getStatusColor, getStatusLabel, AgentStatus } f
 import { useSubscription } from "@/hooks/useSubscription";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useExtension } from "@/hooks/useExtension";
-import { requestProfileRefresh } from "@/lib/extension-messaging";
+import { requestProfileRefresh, pingExtension, syncTokenToExtension } from "@/lib/extension-messaging";
 import { useAuth } from "@/contexts/AuthContext";
 import { AgentGlobalToggle } from "@/components/agent/AgentGlobalToggle";
 import { ScheduledPostsList } from "@/components/agent/ScheduledPostsList";
@@ -81,6 +82,9 @@ const Dashboard = () => {
     return stored ? JSON.parse(stored) : null;
   });
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  
+  // Local extension connection state for faster UI feedback
+  const [localExtensionConnected, setLocalExtensionConnected] = useState(extensionStatus.isConnected);
 
   // Track previous connection state to detect changes
   const [wasConnected, setWasConnected] = useState(extensionStatus.isConnected);
@@ -118,7 +122,38 @@ const Dashboard = () => {
       return () => clearTimeout(timeout);
     }
     setWasConnected(extensionStatus.isConnected);
+    setLocalExtensionConnected(extensionStatus.isConnected);
   }, [extensionStatus.isConnected, wasConnected]);
+
+  // Periodic extension ping every 30 seconds for real-time status
+  useEffect(() => {
+    const checkExtension = async () => {
+      const connected = await pingExtension();
+      setLocalExtensionConnected(connected);
+    };
+    
+    // Initial check
+    checkExtension();
+    
+    // Periodic check every 30 seconds
+    const interval = setInterval(checkExtension, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-sync token to extension when authenticated
+  useEffect(() => {
+    const syncToken = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token && localExtensionConnected) {
+        console.log("[Dashboard] Auto-syncing token to extension");
+        syncTokenToExtension(session.access_token);
+      }
+    };
+    
+    if (user && localExtensionConnected) {
+      syncToken();
+    }
+  }, [user, localExtensionConnected]);
 
   // Request profile on mount if connected but no profile data
   useEffect(() => {
@@ -249,33 +284,40 @@ const Dashboard = () => {
           </Alert>
 
           {/* Chrome Extension Status */}
-          <Card className={extensionStatus.isConnected ? "border-success/30 bg-success/5" : "border-warning/30 bg-warning/5"}>
+          <Card className={localExtensionConnected ? "border-success/30 bg-success/5" : "border-warning/30 bg-warning/5"}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${extensionStatus.isConnected ? "bg-success/10" : "bg-warning/10"}`}>
-                    <Chrome className={`w-5 h-5 ${extensionStatus.isConnected ? "text-success" : "text-warning"}`} />
+                  {/* Pulsing connection indicator */}
+                  <div className="relative">
+                    <div className={`w-3 h-3 rounded-full ${localExtensionConnected ? "bg-success" : "bg-destructive"}`} />
+                    {localExtensionConnected && (
+                      <div className="absolute inset-0 w-3 h-3 rounded-full bg-success animate-ping opacity-75" />
+                    )}
+                  </div>
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${localExtensionConnected ? "bg-success/10" : "bg-warning/10"}`}>
+                    <Chrome className={`w-5 h-5 ${localExtensionConnected ? "text-success" : "text-warning"}`} />
                   </div>
                   <div>
                     <p className="font-medium flex items-center gap-2">
                       Chrome Extension
-                      {extensionStatus.isConnected ? (
-                        <Badge className="bg-success text-xs">Connected</Badge>
+                      {localExtensionConnected ? (
+                        <Badge className="bg-success text-xs">✅ Connected</Badge>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">Not Connected</Badge>
+                        <Badge variant="secondary" className="text-xs">❌ Not Connected</Badge>
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {extensionStatus.isConnected 
+                      {localExtensionConnected 
                         ? "Ready to publish scheduled posts"
-                        : "Connect to enable LinkedIn posting"
+                        : "Install the Chrome extension to enable auto-posting"
                       }
                     </p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/app/linkedin">
-                    {extensionStatus.isConnected ? "Manage" : "Connect"}
+                    {localExtensionConnected ? "Manage" : "Connect"}
                   </Link>
                 </Button>
               </div>

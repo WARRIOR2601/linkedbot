@@ -131,3 +131,59 @@ export const disconnectExtension = () => {
     }
   }
 };
+
+/**
+ * Ping extension to check if it's connected
+ * Returns a promise that resolves to true if extension responds, false otherwise
+ */
+export const pingExtension = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && 
+        window.chrome && 
+        window.chrome.runtime && 
+        window.chrome.runtime.sendMessage) {
+      try {
+        window.chrome.runtime.sendMessage(EXTENSION_ID, { type: "LINKEDBOT_PING" }, (response) => {
+          if (window.chrome?.runtime?.lastError) {
+            resolve(false);
+          } else {
+            resolve(response?.connected === true);
+          }
+        });
+        // Timeout fallback - resolve false if no response in 2 seconds
+        setTimeout(() => resolve(false), 2000);
+      } catch (error) {
+        resolve(false);
+      }
+    } else {
+      resolve(false);
+    }
+  });
+};
+
+/**
+ * Broadcast config update to extension
+ * Call this after saving agent configuration
+ */
+export const broadcastConfigUpdate = (config: { agentActive?: boolean; [key: string]: any }) => {
+  if (typeof window !== 'undefined' && 
+      window.chrome && 
+      window.chrome.runtime && 
+      window.chrome.runtime.sendMessage) {
+    try {
+      console.debug("[LinkedBot] Broadcasting config update to extension");
+      window.chrome.runtime.sendMessage(EXTENSION_ID, { 
+        type: "CONFIG_UPDATED", 
+        config 
+      }, (response) => {
+        if (window.chrome?.runtime?.lastError) {
+          console.debug("[LinkedBot] Config update: Extension not available");
+        } else {
+          console.debug("[LinkedBot] Config update response:", response);
+        }
+      });
+    } catch (error) {
+      console.debug("[LinkedBot] Config update failed", error);
+    }
+  }
+};
