@@ -110,6 +110,70 @@ const Dashboard = () => {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  // NEW: Extension communication state
+  const [extensionConnected, setExtensionConnected] = useState(false);
+
+  // NEW: Listen for extension messages (PING_EXTENSION, REQUEST_TOKEN, REQUEST_CONFIG)
+  useEffect(() => {
+    const handleExtensionMessage = async (event: MessageEvent) => {
+      // Respond to ping from extension
+      if (event.data?.type === "PING_EXTENSION") {
+        console.log("[Dashboard] Received PING_EXTENSION - responding with EXTENSION_CONNECTED");
+        setExtensionConnected(true);
+        window.postMessage({ type: "EXTENSION_CONNECTED", timestamp: Date.now() }, "*");
+      }
+
+      // Send auth token when requested
+      if (event.data?.type === "REQUEST_TOKEN") {
+        console.log("[Dashboard] Received REQUEST_TOKEN - sending token");
+        const token = localStorage.getItem("sb-access-token") || 
+                      localStorage.getItem("sb-uulsigivyqoyakgflnrj-auth-token");
+        
+        // Also try to get fresh token from Supabase
+        let accessToken = token;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            accessToken = session.access_token;
+          }
+        } catch (e) {
+          console.error("[Dashboard] Error getting session:", e);
+        }
+        
+        window.postMessage({ type: "WEBSITE_TOKEN", token: accessToken }, "*");
+      }
+
+      // Send agent config when requested
+      if (event.data?.type === "REQUEST_CONFIG") {
+        console.log("[Dashboard] Received REQUEST_CONFIG - fetching and sending config");
+        try {
+          const { data: configData, error } = await supabase
+            .from("client_ai_profiles")
+            .select("*")
+            .eq("user_id", user?.id)
+            .maybeSingle();
+          
+          if (error) throw error;
+          
+          window.postMessage({ 
+            type: "CONFIG_DATA", 
+            config: configData || { agent_active: false }
+          }, "*");
+        } catch (e) {
+          console.error("[Dashboard] Error fetching config:", e);
+          window.postMessage({ 
+            type: "CONFIG_DATA", 
+            config: { agent_active: false },
+            error: "Failed to fetch config"
+          }, "*");
+        }
+      }
+    };
+
+    window.addEventListener("message", handleExtensionMessage);
+    return () => window.removeEventListener("message", handleExtensionMessage);
+  }, [user?.id]);
+
   // Request profile when extension status changes to connected
   useEffect(() => {
     // Detect connection state change: was disconnected, now connected
@@ -274,7 +338,21 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* What Are Agents - Explanation Card */}
+          {/* Simple Extension Status Indicator */}
+          <div className="bg-card rounded-lg p-4 shadow mb-4 border">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${extensionConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="font-medium">
+                Extension: {extensionConnected ? '✅ Connected' : '❌ Not Connected'}
+              </span>
+            </div>
+            {!extensionConnected && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Install the Chrome extension to enable auto-posting
+              </p>
+            )}
+          </div>
+
           <Alert className="border-primary/30 bg-primary/5">
             <Bot className="h-4 w-4 text-primary" />
             <AlertDescription className="text-muted-foreground">
